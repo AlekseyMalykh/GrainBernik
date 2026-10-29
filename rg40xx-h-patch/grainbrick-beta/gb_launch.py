@@ -38,6 +38,7 @@ def _load_adapter(name):
     except Exception as exc:
         print('GRAINBERNIK ADAPTER FAILED:', name, repr(exc), flush=True)
 
+_load_adapter('gb_audio')
 _load_adapter('gb_buttons')
 _load_adapter('gb_display_fit')
 
