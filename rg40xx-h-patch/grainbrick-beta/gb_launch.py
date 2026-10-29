@@ -24,16 +24,22 @@ for package in (pygame, numpy):
         raise SystemExit('GrainBrick: embedded third-party package detected: ' + str(location))
 print('EXTERNAL PYGAME:',pygame.__file__, 'NUMPY:',numpy.__file__,flush=True)
 
-# Screen adapter (RG40XX H 640x480 etc.).
-_fit_path = APP / 'gb_display_fit.py'
-if _fit_path.is_file():
+# GrainBernik adapters for RG40XX H: button layout first (may show the
+# one-time calibration screen), then screen scaling 1024x768 -> 640x480.
+def _load_adapter(name):
+    path = APP / (name + '.py')
+    if not path.is_file():
+        return
     try:
-        _spec = importlib.util.spec_from_file_location('gb_display_fit', _fit_path)
-        _fit = importlib.util.module_from_spec(_spec)
-        _spec.loader.exec_module(_fit)
-        _fit.install()
+        spec = importlib.util.spec_from_file_location(name, path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.install()
     except Exception as exc:
-        print('GB DISPLAY FIT FAILED:', repr(exc), flush=True)
+        print('GRAINBERNIK ADAPTER FAILED:', name, repr(exc), flush=True)
+
+_load_adapter('gb_buttons')
+_load_adapter('gb_display_fit')
 
 os.environ['GRAINBRICK_ROOT'] = str(APP)
 sys.path.insert(0,str(APP))
