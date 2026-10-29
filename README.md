@@ -3,7 +3,7 @@ A free granular ambient sound instrument for TrimUI Brick.
 
 GrainBrick turns audio samples into evolving, organic textures with granular processing, tape-style sound shaping, effects and the ORBIX generative note engine.
 
-It is designed for hands-on ambient exploration and sound design — not a tracker, sequencer or traditional looper.
+It is designed for hands-on ambient exploration and sound design - not a tracker, sequencer or traditional looper.
 GrainBrick beta 1.0
 This is the first public beta for the original TrimUI Brick running KNULLI.
 Features
@@ -19,7 +19,7 @@ Open the repository's Releases section and download:
 
 GrainBrick_beta_1.0_TrimUI_Brick_KNULLI.zip
 
-Do not download GitHub's automatically generated “Source code” ZIP — that is not the application.
+Do not download GitHub's automatically generated “Source code” ZIP - that is not the application.
 Compatibility
 - Tested: original TrimUI Brick with KNULLI
 - Requires a compatible AArch64 KNULLI installation providing Python 3.12, Pygame and NumPy
