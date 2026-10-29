@@ -11,10 +11,18 @@ The patch does not modify or redistribute the closed GrainBrick application: you
 ## Install on RG40XX H
 
 1. Install the official release as described below (copy `grainbrick-beta/` and `GrainBrick beta 1.0.sh` to `/userdata/roms/ports/`). With the card in a PC, this is the `roms/ports` folder on the SHARE partition.
-2. Copy the two files from [`rg40xx-h-patch/grainbrick-beta/`](rg40xx-h-patch/grainbrick-beta/) into `/userdata/roms/ports/grainbrick-beta/`, replacing `gb_launch.py`:
+2. Copy the files from [`rg40xx-h-patch/grainbrick-beta/`](rg40xx-h-patch/grainbrick-beta/) into `/userdata/roms/ports/grainbrick-beta/`, replacing `gb_launch.py`:
    - `gb_display_fit.py` — the screen adapter;
-   - `gb_launch.py` — the original launcher plus three lines that load the adapter.
-3. Launch GrainBrick from PORTS.
+   - `gb_buttons.py` — the button layout adapter;
+   - `gb_launch.py` — the original launcher plus a few lines that load both adapters.
+3. Copy [`rg40xx-h-patch/GrainBernik Buttons Setup.sh`](rg40xx-h-patch/) into `/userdata/roms/ports/`.
+4. Launch GrainBrick from PORTS. On the first launch a short button setup screen appears: press each button it asks for (A, B, X, Y, L1, R1, L2, R2, SELECT, START, MENU, D-pad, then optionally L3/R3 for TAB−/TAB+). Optional steps are skipped automatically after a few seconds.
+
+### Buttons
+
+GrainBrick reads the raw button numbers of the TrimUI Brick, so on other devices the button names in the app's hints don't match the physical buttons. `gb_buttons.py` records your device's layout once (saved to `grainbrick-beta/gb_buttons.json`) and translates every button press into the Brick's numbers. After that the button labelled **A** on the RG40XX H is **A** in GrainBrick, **L1** is **L1**, and so on. D-pad buttons are converted to the D-pad events the app expects; analog L2/R2 triggers are supported.
+
+To redo the setup, run **GrainBernik Buttons Setup** from PORTS (or delete `gb_buttons.json`). Set `GRAINBRICK_BUTTONS=0` to turn the adapter off.
 
 Optional settings (environment variables, can be added to `GrainBrick beta 1.0.sh` before the `python3` line):
 
@@ -26,11 +34,9 @@ Optional settings (environment variables, can be added to `GrainBrick beta 1.0.s
 
 The launcher log `grainbrick-beta/beta_port_launcher.log` contains a `GB DISPLAY FIT:` line with the detected sizes.
 
-Buttons can be remapped inside the app (button mapping in settings) if the RG40XX H layout differs from the Brick.
-
 ## Установка на RG40XX H (кратко)
 
-Установите официальный релиз в `roms/ports`, затем скопируйте `gb_display_fit.py` и `gb_launch.py` из папки `rg40xx-h-patch/grainbrick-beta/` в `roms/ports/grainbrick-beta/` с заменой. Интерфейс будет уменьшен с 1024×768 до 640×480 на весь экран.
+Установите официальный релиз в `roms/ports`, затем скопируйте `gb_display_fit.py`, `gb_buttons.py` и `gb_launch.py` из папки `rg40xx-h-patch/grainbrick-beta/` в `roms/ports/grainbrick-beta/` с заменой, а `GrainBernik Buttons Setup.sh` — в `roms/ports/`. Интерфейс будет уменьшен с 1024×768 до 640×480 на весь экран. При первом запуске появится экран настройки кнопок: нажимайте кнопки, которые он просит. После этого названия кнопок в подсказках приложения совпадут с надписями на приставке. Повторить настройку можно через порт «GrainBernik Buttons Setup».
 
 ---
 
