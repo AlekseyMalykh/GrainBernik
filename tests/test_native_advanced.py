@@ -174,6 +174,102 @@ class NativeIntegration(unittest.TestCase):
         self.assertEqual(loaded.data, self.runtime.settings.data)
         self.assertEqual(json.loads((self.app / 'settings.json').read_text())['future_app_key'], {'hello': 1})
 
+    def test_start_stops_and_restarts_from_every_advanced_page(self):
+        import copy
+        self.tab('SETTINGS')
+        for page in ('root', 'left_stick', 'right_stick', 'left_stick.options',
+                     'right_stick.options', 'l2', 'r2'):
+            with self.subTest(page=page):
+                self.runtime.menu.open()
+                self.runtime.menu.page, self.runtime.menu.index = page, 1
+                settings_before = copy.deepcopy(self.runtime.settings.data)
+                self.bus.set('transport.playing', 1)
+                self.assertEqual(self.tap(13), [('START', 1)])
+                self.assertEqual(self.bus.get('transport.playing'), 0)
+                self.assertEqual((self.runtime.menu.page, self.runtime.menu.index), (page, 1))
+                self.tap(13)
+                self.assertEqual(self.bus.get('transport.playing'), 1)
+                self.assertEqual(self.runtime.settings.data, settings_before)
+        self.runtime.menu.open()
+        self.runtime.menu.confirm = True
+        self.bus.set('transport.playing', 1)
+        self.tap(13)
+        self.assertEqual(self.bus.get('transport.playing'), 0)
+        self.assertTrue(self.runtime.menu.confirm)
+
+    def test_shoulders_switch_tabs_from_every_advanced_page_and_keep_assignments(self):
+        import copy
+        self.runtime.settings.data['left_stick'].update(enabled=True, x='orbix.rotation', y='orbix.gravity')
+        self.runtime.settings.data['r2'].update(enabled=True, effect='ORBIX', mode='Toggle')
+        self.assertTrue(self.runtime.settings.save())
+        expected = copy.deepcopy(self.runtime.settings.data)
+        for page in ('root', 'left_stick', 'right_stick', 'left_stick.options',
+                     'right_stick.options', 'l2', 'r2'):
+            for button, tab in ((8, 'VISUAL'), (9, 'SAVE'), (15, 'VISUAL'), (16, 'SAVE')):
+                with self.subTest(page=page, button=button):
+                    self.tab('SETTINGS')
+                    self.controller.settings_param_index = len(self.controller.SETTINGS_PARAMS) - 1
+                    self.runtime.menu.open()
+                    self.runtime.menu.page = page
+                    self.tap(button)
+                    self.assertEqual(self.controller.current_tab, tab)
+                    self.assertIsNone(self.runtime.menu.page)
+                    self.assertEqual(self.runtime.settings.data, expected)
+                    self.assertEqual(self.adapter._core.Settings(self.app / 'settings.json').data, expected)
+                    self.controller.handle('TAB_NEXT' if button in (8, 15) else 'TAB_PREV')
+                    self.assertEqual(self.controller.current_tab, 'SETTINGS')
+                    self.tap(5)
+                    self.assertEqual(self.runtime.menu.page, 'root')
+        self.runtime.menu.confirm = True
+        self.tap(9)
+        self.assertEqual(self.controller.current_tab, 'SAVE')
+        self.assertIsNone(self.runtime.menu.page)
+        self.assertFalse(self.runtime.menu.confirm)
+        self.assertEqual(self.runtime.settings.data, expected)
+
+    def test_advanced_context_and_navigation_follow_native_help_language(self):
+        self.tab('SETTINGS')
+        self.controller.settings_param_index = len(self.controller.SETTINGS_PARAMS) - 1
+        for language in ('EN', 'RU'):
+            self.runtime.menu.page = None
+            self.ui.set_info_language(language)
+            self.assertEqual(self.ui.footer_hint('B / A CHANGE'),
+                             self.adapter._localized(self.ui, self.adapter.MESSAGES, 'footer_open'))
+            self.snapshot('advanced-entry-' + language.lower())
+            self.runtime.menu.open()
+            seen = []
+            original_text = self.ui.text
+
+            def text(message, *args, **kwargs):
+                seen.append(message)
+                return original_text(message, *args, **kwargs)
+
+            self.ui.text = text
+            try:
+                for page, index in (('root', 0), ('left_stick.options', 4), ('r2', 1)):
+                    self.runtime.menu.page, self.runtime.menu.index = page, index
+                    self.runtime.settings.data['r2']['effect'] = 'ORBIX'
+                    self.runtime.draw(self.ui)
+                    self.assertIn(self.runtime.help_text(self.ui),
+                                  [pair[1 if language == 'RU' else 0] for pair in self.adapter.HELP.values()])
+                    self.snapshot('advanced-help-' + language.lower())
+                self.runtime.menu.confirm, self.runtime.menu.index = True, 0
+                self.runtime.draw(self.ui)
+                self.assertIn(self.adapter._localized(self.ui, self.adapter.MESSAGES, 'reset_title'), seen)
+                self.snapshot('advanced-reset-' + language.lower())
+            finally:
+                self.ui.text = original_text
+            self.assertIn(self.adapter._localized(self.ui, self.adapter.MESSAGES, 'transport'), seen)
+            self.assertIn(self.adapter._localized(self.ui, self.adapter.MESSAGES, 'navigation'), seen)
+            self.assertEqual(self.ui.footer_hint('B / A CHANGE'),
+                             self.adapter._localized(self.ui, self.adapter.MESSAGES, 'footer_change'))
+            for key, pair in self.adapter.HELP.items():
+                self.assertLessEqual(len(self.ui._wrap_info_text(pair[language == 'RU'], max_chars=64)), 2,
+                                     (key, language, pair[language == 'RU']))
+            if language == 'RU':
+                self.assertTrue(any('КРЕСТОВИНА' in msg for msg in seen))
+            self.runtime.menu.confirm = False
+
     def test_disabled_buttons_keep_native_actions(self):
         self.tab('GRAIN')
         before = {k: p.value for k, p in self.bus.params.items()}
@@ -247,7 +343,88 @@ class NativeIntegration(unittest.TestCase):
         self.assertNotIn('pan', choices)
         self.assertNotIn('tape.speed', choices)
         self.assertEqual(self.runtime.controls.effect_choices(),
-                         [None, 'Freeze', 'Reverse', 'Delay Throw', 'Reverb Wash', 'Pitch Drop', 'Bypass'])
+                         [None, 'Freeze', 'Reverse', 'Delay Throw', 'Reverb Wash', 'Pitch Drop', 'Bypass', 'ORBIX'])
+
+    def test_orbix_real_catalog_xy_and_integer_selections(self):
+        choices = dict(self.runtime.controls.axis_choices())
+        orbix = {key for key in choices if key and key.startswith('orbix.')}
+        expected = {'orbix.gravity', 'orbix.rotation', 'orbix.bounce', 'orbix.volume',
+                    'orbix.attack', 'orbix.release', 'orbix.reverb', 'orbix.balls',
+                    'orbix.root', 'orbix.scale', 'orbix.instrument', 'orbix.octave', 'orbix.shape'}
+        self.assertEqual(orbix, expected)
+        self.tab('GRAIN')
+        self.controller.orbix_view_active = True
+        cfg = self.runtime.settings.data['left_stick']
+        cfg.update(enabled=True, x='orbix.rotation', y='orbix.gravity', smoothing=0)
+        before = {key: self.bus.get(key) for key in orbix}
+        self.joy.axes = [1, -1, 0, 0]
+        self.poll()
+        self.assertEqual(self.bus.get('orbix.rotation'), 55)
+        self.assertEqual(self.bus.get('orbix.gravity'), 0)
+        self.assertEqual(self.bus.get('orbix.enabled'), 0)  # XY never silently starts ORBIX
+        self.joy.axes = [0] * 4
+        self.poll()
+        for key in self.adapter._core.DISCRETE_PARAMETERS:
+            cfg['x'], cfg['y'] = key, None
+            self.joy.axes = [.61, 0, 0, 0]
+            self.poll()
+            self.assertEqual(self.bus.get(key), round(self.bus.get(key)))
+            self.joy.axes = [0] * 4
+            self.poll()
+        self.assertEqual({key: self.bus.get(key) for key in orbix}, before)
+        cfg['x'], cfg['y'] = 'orbix.rotation', 'orbix.gravity'
+        self.tab('SETTINGS')
+        self.runtime.menu.open()
+        self.runtime.menu.page, self.runtime.menu.index = 'left_stick', 1
+        self.snapshot('orbix-axis-assignments')
+
+    def test_orbix_trigger_modes_restore_enable_and_preserve_transport(self):
+        self.tab('GRAIN')
+        cfg = self.runtime.settings.data['r2']
+        cfg.update(enabled=True, effect='ORBIX')
+        for initial in (0, 1):
+            for mode in ('Hold', 'Toggle'):
+                self.bus.set('orbix.enabled', initial)
+                cfg['mode'] = mode
+                self.assertEqual(self.button(11), [])
+                self.assertEqual(self.bus.get('orbix.enabled'), 1)
+                self.assertEqual(self.bus.get('transport.playing'), 0)
+                self.button(11, False)
+                if mode == 'Toggle':
+                    self.assertEqual(self.bus.get('orbix.enabled'), 1)
+                    self.tap(11)
+                self.assertEqual(self.bus.get('orbix.enabled'), initial)
+        self.tab('SETTINGS')
+        self.runtime.menu.open()
+        self.runtime.menu.page, self.runtime.menu.index = 'r2', 1
+        self.snapshot('orbix-button-assignment')
+
+    def test_orbix_assignment_generates_sound_in_native_dsp(self):
+        import wave
+        import numpy as np
+        from engine.sample import SampleBuffer
+        from engine.granular_c import GranularEngine
+        from engine.dsp_chain import DSPChain
+        path = self.app / 'orbix-silence.wav'
+        with wave.open(str(path), 'wb') as out:
+            out.setparams((2, 2, 48000, 0, 'NONE', 'not compressed'))
+            out.writeframes(bytes(48000 * 4))
+        chain = DSPChain(GranularEngine(SampleBuffer(str(path)), self.bus), self.bus)
+        self.tab('GRAIN')
+        self.bus.set('transport.playing', 1)
+        self.bus.set('orbix.volume', 100)
+        self.bus.set('orbix.balls', 12)
+        self.bus.set('orbix.gravity', 420)
+        self.runtime.settings.data['l2'].update(enabled=True, effect='ORBIX')
+        self.button(10)
+        peak = 0
+        for _ in range(160):
+            rendered = chain.render(1024)
+            self.assertTrue(np.isfinite(rendered).all())
+            peak = max(peak, float(np.abs(rendered).max()))
+        self.assertGreater(peak, 1e-5, 'ORBIX did not generate audio from a silent input sample')
+        self.button(10, False)
+        self.assertEqual(self.bus.get('orbix.enabled'), 0)
 
     def test_live_xy_uses_actual_native_bounds_and_release(self):
         self.tab('GRAIN')

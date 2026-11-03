@@ -6,8 +6,10 @@ existing Settings tab. It requires both `gb_advanced.py` and
 
 **Device status (2026-11-03):** the owner confirmed successful operation on
 RG40XX H with KNULLI after the three-file update was installed on the console's
-card. Automated validation passes **27 tests** (18 pure tests and 9 tests
-against the official ARM64 application/DSP). The checklist below covers
+card. Current automated validation passes **36 tests** (21 pure tests and 15 tests
+against the official ARM64 application/DSP). ORBIX, transport/tab navigation fixes
+and bilingual advanced help are newer additions awaiting device verification.
+The checklist below covers
 additional per-assignment and extended testing; not every item has been
 individually confirmed by the owner.
 
@@ -34,12 +36,19 @@ SETTINGS
 ```
 
 Up/Down moves selection, Left/Right changes values, A opens/changes, B returns
-one level. Tab− also goes back within this menu. Stick Options has scrolling
+one level. START toggles native playback without closing the menu. L1/R1 and
+the calibrated TAB−/TAB+ controls leave the submenu and switch the native main
+tabs; assignments remain saved. Stick Options has scrolling
 and a row counter. The original pixel font, colors and 1024×768 virtual surface
 are retained and scaled by the existing adapter to 640×480. No mouse is needed.
 Disabled controls remain editable; enabling one does not enable any other.
 The Reset Sound Params entry remains the original app action; the new Reset
 to Defaults affects only the four advanced assignments and needs confirmation.
+
+Contextual explanations for the selected setting, navigation/transport hints,
+reset confirmation and save-error messages follow native INFO LANGUAGE (EN/RU).
+Changes apply on the next render; no restart is needed. Parameter/effect names
+retain the existing app naming. Context help occupies two lines above the footer.
 
 ## Configuration
 
@@ -80,6 +89,14 @@ The original engine's DSP smoothing remains active. XY control does not
 automatically turn granular/tape processing on: activate the corresponding
 native mode when using its parameters.
 
+ORBIX offers seven continuous axes (Gravity, Rotation, Bounce, Volume, Attack,
+Release, Reverb) and six discrete axes (Balls, Root, Scale, Instrument, Octave,
+Shape). Discrete targets are rounded to valid integers **before** publishing
+to ParameterBus; unchanged integer selections do not generate repeated writes.
+Bounds still come from the native engine. XY assignments do not turn ORBIX on
+or start transport. Enable it using the native control or the ORBIX L2/R2
+assignment and use START for playback.
+
 If several controls target the same parameter, the deterministic priority is
 left stick X/Y, right stick X/Y, L2, R2. Releasing one reveals the remaining
 control's value; releasing the last restores the original value. Native edits
@@ -88,7 +105,7 @@ rules avoid one trigger's release undoing the other trigger's still-active FX.
 
 ## Real beta 1.0 assignments
 
-XY choices are None plus the following **18** parameters, filtered against the
+XY choices are None plus the following **31** parameters, filtered against the
 running ParameterBus:
 
 | Group | Assignments |
@@ -99,6 +116,7 @@ running ParameterBus:
 | Shimmer | Amount (mix), Pitch (shift) |
 | Tape | Saturation, Wow, Flutter |
 | Roam | Speed |
+| ORBIX | Gravity, Rotation, Bounce, Volume, Attack, Release, Reverb, Balls, Root, Scale, Instrument, Octave, Shape |
 
 | Button assignment | Existing engine parameters / behavior |
 |---|---|
@@ -108,6 +126,7 @@ running ParameterBus:
 | Reverb Wash | Sets reverb mix to 0.85, size to 0.95, decay to 12 s; restores these on release/deactivation. |
 | Pitch Drop | Enables grain processing and sets grain pitch to −12 semitones; restores both. |
 | Bypass | Delay/reverb/shimmer mix 0, tape/comp disabled, six EQ gains 0; restores all on release/deactivation. |
+| ORBIX | Sets `orbix.enabled` to 1; restores its previous value on release/deactivation, including when it was already enabled. Does not change transport or the other ORBIX settings. |
 | None | No extra input capture or sound changes. |
 
 All button assignments offer Hold and Toggle. Values are clamped using the
@@ -165,6 +184,9 @@ entries, physical-button/D-pad navigation through native `InputManager.poll`,
 actual `UIEngine` rendering, real ParameterBus limits, XY, Hold/Toggle,
 native/advanced configuration merging, input capture/focus cleanup and
 rendering each macro through the original `GranularEngine`/`DSPChain`.
+It also verifies ORBIX generating audio from a silent input sample, integer
+musical selections, START from every advanced page, shoulder-button tab changes
+with saved assignments and both help languages with 640×480 render captures.
 Without an official module, native tests are explicitly skipped, not counted
 as device verification. The module itself is never copied into this repository.
 

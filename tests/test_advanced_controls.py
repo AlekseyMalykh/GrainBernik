@@ -26,6 +26,12 @@ class Bus:
         self.params = {k: Param() for k in keys}
         self.params['grain.pitch'] = Param(0, -24, 24)
         self.params['reverb.decay'] = Param(6, .3, 20)
+        self.params.update({key: Param(value, low, high) for key, (value, low, high) in {
+            'orbix.balls': (6, 1, 12), 'orbix.root': (2, 0, 11), 'orbix.scale': (0, 0, 4),
+            'orbix.instrument': (0, 0, 2), 'orbix.octave': (0, -2, 2), 'orbix.shape': (3, 0, 5),
+            'orbix.enabled': (0, 0, 1), 'orbix.rotation': (18, -55, 55),
+            'orbix.gravity': (180, 0, 420), 'orbix.volume': (65, 0, 100),
+        }.items()})
         self.writes = []
 
     def get(self, key):
@@ -162,6 +168,53 @@ class AdvancedTests(unittest.TestCase):
         self.stick()
         self.controls.tick({0: 1}, 0, excluded_axes=(1,))
         self.assertEqual(self.bus.get('grain.position'), 1)
+
+    def test_orbix_axes_persist_without_changing_existing_assignments(self):
+        self.store.data['left_stick'].update(enabled=True, x='orbix.rotation', y='orbix.gravity')
+        self.store.data['right_stick'].update(enabled=True, x='delay.mix', y='grain.pitch')
+        self.button('r2', effect='ORBIX', mode='Toggle')
+        self.assertTrue(self.store.save())
+        self.assertEqual(core.Settings(self.path).data, self.store.data)
+        self.assertIn('orbix.gravity', dict(self.controls.axis_choices()))
+        del self.bus.params['orbix.gravity']
+        self.assertNotIn('orbix.gravity', dict(self.controls.axis_choices()))
+        del self.bus.params['orbix.enabled']
+        self.assertNotIn('ORBIX', self.controls.effect_choices())
+
+    def test_orbix_discrete_axes_publish_integer_changes_and_restore(self):
+        self.stick()
+        for key in core.DISCRETE_PARAMETERS:
+            with self.subTest(key=key):
+                self.store.data['left_stick']['x'] = key
+                initial = self.bus.get(key)
+                self.bus.writes.clear()
+                self.controls.tick({0: .61, 1: 0}, 0)
+                self.assertEqual(self.bus.get(key), round(self.bus.get(key)))
+                count = len(self.bus.writes)
+                self.controls.tick({0: .61, 1: 0}, .1)
+                self.assertEqual(len(self.bus.writes), count)
+                self.controls.tick({0: 0, 1: 0}, .2)
+                self.assertEqual(self.bus.get(key), initial)
+                self.assertTrue(all(v == round(v) for k, v in self.bus.writes if k == key))
+
+    def test_orbix_enable_hold_toggle_and_cancel_restore_prior_state(self):
+        for initial in (0, 1):
+            for mode in ('Hold', 'Toggle'):
+                with self.subTest(initial=initial, mode=mode):
+                    self.bus.set('orbix.enabled', initial)
+                    self.button('l2', effect='ORBIX', mode=mode)
+                    self.controls.button('l2', True)
+                    self.assertEqual(self.bus.get('orbix.enabled'), 1)
+                    self.controls.button('l2', False)
+                    if mode == 'Toggle':
+                        self.assertEqual(self.bus.get('orbix.enabled'), 1)
+                        self.controls.button('l2', True)
+                        self.controls.button('l2', False)
+                    self.assertEqual(self.bus.get('orbix.enabled'), initial)
+        self.bus.set('orbix.enabled', 0)
+        self.controls.button('l2', True)
+        self.controls.cancel()
+        self.assertEqual(self.bus.get('orbix.enabled'), 0)
 
     def test_all_four_sources_act_simultaneously(self):
         self.stick()

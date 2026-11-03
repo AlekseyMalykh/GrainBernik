@@ -25,7 +25,18 @@ AXIS_PARAMETERS = (
     ('tape.saturation', 'Tape Saturation'), ('tape.wow', 'Tape Wow'),
     ('tape.flutter', 'Tape Flutter'), ('reverb.decay', 'Reverb Decay'),
     ('delay.lowpass', 'Delay Lowpass'), ('shimmer.shift', 'Shimmer Pitch'),
+    ('orbix.gravity', 'ORBIX Gravity'), ('orbix.rotation', 'ORBIX Rotation'),
+    ('orbix.bounce', 'ORBIX Bounce'), ('orbix.volume', 'ORBIX Volume'),
+    ('orbix.attack', 'ORBIX Attack'), ('orbix.release', 'ORBIX Release'),
+    ('orbix.reverb', 'ORBIX Reverb'), ('orbix.balls', 'ORBIX Balls'),
+    ('orbix.root', 'ORBIX Root'), ('orbix.scale', 'ORBIX Scale'),
+    ('orbix.instrument', 'ORBIX Instrument'), ('orbix.octave', 'ORBIX Octave'),
+    ('orbix.shape', 'ORBIX Shape'),
 )
+# These parameters are enumerations/counts in the native ORBIX engine.
+# Smooth the gesture internally, then publish only valid integer selections.
+DISCRETE_PARAMETERS = frozenset(('orbix.balls', 'orbix.root', 'orbix.scale',
+                                  'orbix.instrument', 'orbix.octave', 'orbix.shape'))
 # These are reversible presets of existing engine parameters, not new DSP.
 # Freeze is the native Motion Hold fragment texture, not a spectral freeze.
 BUTTON_EFFECTS = {
@@ -38,6 +49,7 @@ BUTTON_EFFECTS = {
                'tape.enabled': 0, 'comp.enabled': 0,
                **{key: 0 for key in ('eq.low', 'eq.lmid', 'eq.mid',
                                      'eq.hmid', 'eq.high', 'eq.air')}},
+    'ORBIX': {'orbix.enabled': 1},
 }
 
 
@@ -179,6 +191,8 @@ class Controls:
             bounds = self.bounds(key)
             if bounds:
                 target = max(bounds[0], min(bounds[1], target))
+            if key in DISCRETE_PARAMETERS and key in combined:
+                target = float(round(target))
             if abs(self.bus.get(key) - target) > 1e-8:
                 self.bus.set(key, target)
             if key in combined:

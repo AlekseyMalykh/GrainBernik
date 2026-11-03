@@ -1,5 +1,7 @@
 # GrainBernik
 
+[English](README.md) | [Русский — полная инструкция](README_RU.md)
+
 **GrainBernik** is an unofficial fork of [ETRNLIAM/GrainBrick](https://github.com/ETRNLIAM/GrainBrick) for the **Anbernic RG40XX H** (640×480) running KNULLI.
 
 GrainBrick draws its interface for the TrimUI Brick screen (1024×768). On a 640×480 screen you only see the top-left part of it. This fork adds a small launcher patch: the app keeps drawing at 1024×768 off-screen, and every frame is scaled down to the real screen. Both screens are 4:3, so the picture fills the whole display.
@@ -8,7 +10,9 @@ The patch does not modify or redistribute the closed GrainBrick application: you
 
 > Status: beta. Tested on RG40XX H with KNULLI: screen scaling, buttons, USB audio output and USB recording (Zoom H1n as audio interface).
 
-**New: Advanced Settings — working on RG40XX H.** The in-app **Settings → Advanced Settings** menu adds independent Left Stick, Right Stick, L2 and R2 assignments. All four start **OFF**. The owner confirmed successful operation on RG40XX H with KNULLI on **2026-11-03**, after installing the update on the device's card. Automated checks also pass: **18 control/configuration tests and 9 integration tests against the official ARM64 application and DSP**. The detailed checklist below remains useful for checking every assignment and longer sessions; the device confirmation is not an exhaustive compatibility report.
+**New: Advanced Settings — working on RG40XX H.** The in-app **Settings → Advanced Settings** menu adds independent Left Stick, Right Stick, L2 and R2 assignments. All four start **OFF**. The owner confirmed successful operation of the initial version on RG40XX H with KNULLI on **2026-11-03**. Automated checks now cover **21 control/configuration tests and 15 integration tests against the official ARM64 application and DSP**. The detailed checklist below remains useful for checking every assignment and longer sessions; the device confirmation is not an exhaustive compatibility report.
+
+**Latest update:** ORBIX assignments (13 XY parameters and a Hold/Toggle button), START playback control and L1/R1 tab switching from every advanced submenu, and contextual/navigation help following **INFO LANGUAGE → EN/RU**. These additions pass automated checks and await a new on-device check.
 
 ## Install on RG40XX H
 
@@ -34,11 +38,14 @@ To redo the setup, run **GrainBernik Buttons Setup** from PORTS (or delete `gb_b
 
 Open **SETTINGS**, select **ADVANCED SETTINGS**, then press **A** or **D-pad Right**. Four submenus configure **Left Stick**, **Right Stick**, **L2 Button** and **R2 Button** independently. D-pad Up/Down selects a row; Left/Right or A changes its value; B goes back. Disabled controls stay editable and keep their assignments. Stick Options scrolls when needed; Reset to Defaults requires confirmation and resets only these extra controls.
 
+**START** plays/stops without closing the menu. **L1/R1** switches the main tabs and closes the submenu; edited assignments are already saved and remain available when you return. Navigation hints, contextual help for each setting, reset confirmation and save errors follow the native **INFO LANGUAGE** setting (**EN/RU**) immediately; effect and parameter names retain the app's English naming.
+
 - **Sticks:** separate X/Y parameter assignments, including None; 12% default deadzone; sensitivity, X/Y inversion, Spring/Latch and time-based smoothing. The list is filtered using the running engine's real parameter bounds. Default physical axis indices are left 0/1 and right 2/3; Stick Options allows correcting them for a different controller layout. Calibrated analog-trigger axes are reserved.
-- **L2/R2:** independently choose **Hold** or **Toggle**, and **Freeze**, **Reverse**, **Delay Throw**, **Reverb Wash**, **Pitch Drop**, **Bypass** or **None**. These are reversible presets of existing engine parameters. Freeze uses native **Motion Hold** fragments, Reverse uses native Motion Reverse, and Bypass bypasses the delay/reverb/shimmer, tape, compressor and EQ processing while preserving sample/grain playback.
+- **L2/R2:** independently choose **Hold** or **Toggle**, and **Freeze**, **Reverse**, **Delay Throw**, **Reverb Wash**, **Pitch Drop**, **Bypass**, **ORBIX** or **None**. These are reversible presets of existing engine parameters. Freeze uses native **Motion Hold** fragments, Reverse uses native Motion Reverse, and Bypass bypasses the delay/reverb/shimmer, tape, compressor and EQ processing while preserving sample/grain playback. ORBIX enables the native generator and restores its previous enable state on deactivation; it does not automatically change transport playback.
 - **Settings:** automatically saved under `grainbernik_advanced` in the existing `settings.json`; native app settings are preserved. All assignments start OFF. Turning a control OFF retains its selected parameters. Read/write failures are shown in the advanced menu.
 - **Scope:** assignments operate on the GRAIN, FX, TAPE and VISUAL tabs. Browsing samples, Settings, Save, help/button rebinding, loss of focus, controller removal and exit release temporary effects. Spring returns to the gesture's initial value; Latch retains the last value at center until the control is disabled or a non-performance screen is entered. Returning from a menu requires a fresh button press or centered stick.
 - **Available XY parameters in beta 1.0:** Grain Position/Size/Density/Pitch/Spray; Delay Time/Feedback/Mix/Lowpass; Reverb Mix/Size/Decay; Shimmer Amount/Pitch; Roam Speed; Tape Saturation/Wow/Flutter. Grain and motion parameters require their respective native processing modes to be active.
+- **ORBIX XY:** Gravity, Rotation, Bounce, Volume, Attack, Release, Reverb, Balls, Root, Scale, Instrument, Octave and Shape. Counts and musical selections are published as integers. XY changes do not silently enable ORBIX: turn it on natively or assign ORBIX to L2/R2, then use START for playback. All **31** XY choices are filtered against the running engine.
 - **Limits:** the current public ParameterBus does not expose Filter Cutoff/Resonance, Tape Speed or Pan. No direct Stutter, Tape Stop or Glitch API was verified, so these are **not offered**. Delay Throw/Reverb Wash are parameter presets, not a new send/return routing system. Original closed application/DSP files remain unmodified.
 
 Detailed behavior, test commands and the on-device checklist: [Advanced Settings](docs/ADVANCED_SETTINGS.md). Set `GRAINBERNIK_ADVANCED=0` to disable this adapter.
@@ -76,9 +83,13 @@ The launcher log `grainbrick-beta/beta_port_launcher.log` contains a `GB DISPLAY
 
 L2/R2 поддерживают Hold/Toggle и назначения **Freeze, Reverse, Delay Throw, Reverb Wash, Pitch Drop, Bypass, None**. Это управление существующими параметрами: Freeze — штатное удержание фрагментов Motion Hold, Reverse — Motion Reverse; Bypass отключает эффекты, сохраняя воспроизведение. Отдельные Stutter/Tape Stop/Glitch, Filter Cutoff/Resonance, Tape Speed и Pan не добавлены: рабочего доступа к ним в текущей шине не найдено. Список XY включает только реально доступные параметры гранулятора, delay, reverb, shimmer и tape, а также Roam Speed.
 
+**Теперь доступен ORBIX:** для X/Y добавлены Gravity, Rotation, Bounce, Volume, Attack, Release, Reverb, Balls, Root, Scale, Instrument, Octave и Shape. Дискретные параметры меняются целыми значениями. На L2/R2 можно назначить **ORBIX** в Hold/Toggle: кнопка включает генератор и затем возвращает его прежнее состояние. START отдельно управляет воспроизведением.
+
+**Исправлено управление в подменю:** START запускает/останавливает воспроизведение, L1/R1 переключают основные вкладки с сохранением назначений. Подсказки выбранного пункта, кнопок, подтверждения сброса и ошибки сохранения следуют настройке **INFO LANGUAGE: EN/RU**. [Полная русская инструкция](README_RU.md).
+
 Настройки автоматически сохраняются в существующий `settings.json`, в раздел `grainbernik_advanced`. Выключение не стирает назначения. Управление действует на вкладках GRAIN/FX/TAPE/VISUAL. При входе в браузер, настройки, сохранение или справку, при потере фокуса, отключении контроллера и выходе временные эффекты снимаются, включая Toggle/Latch. После возвращения нужна новая кнопка или возврат стика в центр.
 
-**Работа подтверждена владельцем на RG40XX H с KNULLI 3 ноября 2026 года**, после записи обновления на карту. Также прошли **27 автотестов**: 18 логических и 9 с настоящим ARM64-приложением и оригинальным DSP. Это подтверждение работы функции; отдельные назначения и длительные сессии можно дополнительно проверить по [подробному сценарию](docs/ADVANCED_SETTINGS.md).
+**Работа первой версии подтверждена владельцем на RG40XX H с KNULLI 3 ноября 2026 года**. Текущая версия проверяется **36 автотестами**: 21 логическим и 15 с настоящим ARM64-приложением и оригинальным DSP. Новые назначения ORBIX, исправления START/L1/R1 и перевод подсказок требуют повторной проверки на консоли. [Подробный сценарий](docs/ADVANCED_SETTINGS.md).
 
 Для обновления уже установленного GrainBernik достаточно скопировать **`gb_advanced.py`, `gb_advanced_controls.py` и обновлённый `gb_launch.py`**. Существующие адаптеры звука/кнопок/экрана, USB-скрипты, настройки, сэмплы, проекты и записи сохраняйте. Перед заменой сделайте резервную копию загрузчика и настроек.
 
