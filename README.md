@@ -10,15 +10,15 @@ The patch does not modify or redistribute the closed GrainBrick application: you
 
 > Status: beta. Tested on RG40XX H with KNULLI: screen scaling, buttons, USB audio output and USB recording (Zoom H1n as audio interface).
 
-**Download:** [GrainBernik v0.1.0-beta.1](https://github.com/AlekseyMalykh/GrainBernik/releases/tag/v0.1.0-beta.1).
+**Download:** [GrainBernik v0.1.0-beta.2](https://github.com/AlekseyMalykh/GrainBernik/releases/tag/v0.1.0-beta.2).
 Choose the **patch ZIP** for a fresh installation over the official GrainBrick
 release, or the **update ZIP** for an existing GrainBernik installation (only
 three adapter files). Both include installation instructions. The original
-closed application is not bundled. See [release notes](docs/releases/v0.1.0-beta.1.md).
+closed application is not bundled. See [release notes](docs/releases/v0.1.0-beta.2.md).
 
-**New: Advanced Settings — working on RG40XX H.** The in-app **Settings → Advanced Settings** menu adds independent Left Stick, Right Stick, L2 and R2 assignments. All four start **OFF**. The owner confirmed successful operation of the initial version on RG40XX H with KNULLI on **2026-11-03**. Automated checks now cover **30 control/configuration tests and 18 integration tests against the official ARM64 application and DSP**. The detailed checklist below remains useful for checking every assignment and longer sessions; the device confirmation is not an exhaustive compatibility report.
+**Advanced Settings — working on RG40XX H.** The in-app **Settings → Advanced Settings** menu adds independent Left Stick, Right Stick, L2 and R2 assignments. All four start **OFF**. The owner confirmed successful operation of the initial version on RG40XX H with KNULLI on **2026-11-03**. Beta.1 passed **30 control/configuration checks and 18 integration checks against the official ARM64 application and DSP**; the beta.2 language fix has not been retested. The detailed checklist below remains useful for checking every assignment and longer sessions; the device confirmation is not an exhaustive compatibility report.
 
-**Latest update:** five control presets and one User slot; ORBIX assignments (13 XY parameters and a Hold/Toggle button), START playback control and L1/R1 tab switching from every advanced submenu, and contextual/navigation help following **INFO LANGUAGE → EN/RU**. These additions pass automated checks and await a new on-device check.
+**Latest update:** **v0.1.0-beta.2** keeps menu labels, options, confirmation titles and errors in English while contextual and navigation hints follow **INFO LANGUAGE → EN/RU**. The five presets, User slot, ORBIX assignments and submenu navigation remain available. The localization change awaits automated and on-device retesting; the previous beta's 48 checks do not cover this revision.
 
 ## Install on RG40XX H
 
@@ -44,7 +44,7 @@ To redo the setup, run **GrainBernik Buttons Setup** from PORTS (or delete `gb_b
 
 Open **SETTINGS**, select **ADVANCED SETTINGS**, then press **A** or **D-pad Right**. Four submenus configure **Left Stick**, **Right Stick**, **L2 Button** and **R2 Button** independently. D-pad Up/Down selects a row; Left/Right or A changes its value; B goes back. Disabled controls stay editable and keep their assignments. Stick Options scrolls when needed; Reset to Defaults requires confirmation and resets only these extra controls.
 
-**START** plays/stops without closing the menu. **L1/R1** switches the main tabs and closes the submenu; edited assignments are already saved and remain available when you return. Navigation hints, contextual help for each setting, reset confirmation and save errors follow the native **INFO LANGUAGE** setting (**EN/RU**) immediately; effect and parameter names retain the app's English naming.
+**START** plays/stops without closing the menu. **L1/R1** switches the main tabs and closes the submenu; edited assignments are already saved and remain available when you return. Navigation/transport hints and contextual explanations follow the native **INFO LANGUAGE** setting (**EN/RU**) immediately. Menu labels, option names, confirmation titles and save-error messages stay in English; effect and parameter names retain the app's English naming.
 
 As in the native menus, the selected setting's title and explanation appear
 **above the control list**. Button and transport hints remain at the bottom.
@@ -120,7 +120,7 @@ L2/R2 поддерживают Hold/Toggle и назначения **Freeze, Rev
 
 **Теперь доступен ORBIX:** для X/Y добавлены Gravity, Rotation, Bounce, Volume, Attack, Release, Reverb, Balls, Root, Scale, Instrument, Octave и Shape. Дискретные параметры меняются целыми значениями. На L2/R2 можно назначить **ORBIX** в Hold/Toggle: кнопка включает генератор и затем возвращает его прежнее состояние. START отдельно управляет воспроизведением.
 
-**Исправлено управление в подменю:** START запускает/останавливает воспроизведение, L1/R1 переключают основные вкладки с сохранением назначений. Подсказки выбранного пункта, кнопок, подтверждения сброса и ошибки сохранения следуют настройке **INFO LANGUAGE: EN/RU**. [Полная русская инструкция](README_RU.md).
+**Исправлено управление в подменю:** START запускает/останавливает воспроизведение, L1/R1 переключают основные вкладки с сохранением назначений. Подсказки выбранного пункта и кнопок следуют настройке **INFO LANGUAGE: EN/RU**. Названия меню, заголовки подтверждений и ошибки сохранения остаются на английском. [Полная русская инструкция](README_RU.md).
 
 **Пресеты управления:** в **Advanced Settings → Presets** доступны Granular,
 Ambient, Echo, Tape и ORBIX Play, а также один пользовательский слот с командами
@@ -131,7 +131,7 @@ Ambient, Echo, Tape и ORBIX Play, а также один пользовател
 
 Настройки автоматически сохраняются в существующий `settings.json`, в раздел `grainbernik_advanced`. Выключение не стирает назначения. Управление действует на вкладках GRAIN/FX/TAPE/VISUAL. При входе в браузер, настройки, сохранение или справку, при потере фокуса, отключении контроллера и выходе временные эффекты снимаются, включая Toggle/Latch. После возвращения нужна новая кнопка или возврат стика в центр.
 
-**Работа первой версии подтверждена владельцем на RG40XX H с KNULLI 3 ноября 2026 года**. Текущая версия проверяется **48 автотестами**: 30 логическими и 18 с настоящим ARM64-приложением и оригинальным DSP. Пресеты, новые назначения ORBIX, исправления START/L1/R1 и перевод подсказок требуют повторной проверки на консоли. [Подробный сценарий](docs/ADVANCED_SETTINGS.md).
+**Работа первой версии подтверждена владельцем на RG40XX H с KNULLI 3 ноября 2026 года**. Beta.1 прошла **48 автопроверок**: 30 логических и 18 с ARM64-приложением и оригинальным DSP. Локализационная правка beta.2 пока не проходила повторные автотесты и ожидает проверки на консоли. [Подробный сценарий](docs/ADVANCED_SETTINGS.md).
 
 Для обновления уже установленного GrainBernik достаточно скопировать **`gb_advanced.py`, `gb_advanced_controls.py` и обновлённый `gb_launch.py`**. Существующие адаптеры звука/кнопок/экрана, USB-скрипты, настройки, сэмплы, проекты и записи сохраняйте. Перед заменой сделайте резервную копию загрузчика и настроек.
 

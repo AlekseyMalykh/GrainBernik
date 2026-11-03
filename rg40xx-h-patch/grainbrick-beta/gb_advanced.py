@@ -128,8 +128,28 @@ HELP = {
 }
 
 
+HINT_MESSAGE_KEYS = frozenset({
+    'subtitle',
+    'reset_subtitle',
+    'transport',
+    'navigation',
+    'footer_select',
+    'footer_change',
+    'footer_open',
+    'entry_help1',
+    'entry_help2',
+    'preset_subtitle',
+    'archive_subtitle',
+    'save_user_subtitle',
+    'save_current_subtitle',
+})
+
+
 def _localized(ui, table, key):
-    return table[key][1 if str(getattr(ui, 'info_language', 'EN')).upper() == 'RU' else 0]
+    language_index = 1 if str(getattr(ui, 'info_language', 'EN')).upper() == 'RU' else 0
+    if table is MESSAGES and key not in HINT_MESSAGE_KEYS:
+        return table[key][0]
+    return table[key][language_index]
 
 
 def _log(message):

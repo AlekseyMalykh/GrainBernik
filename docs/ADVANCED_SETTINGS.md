@@ -6,12 +6,10 @@ existing Settings tab. It requires both `gb_advanced.py` and
 
 **Device status (2026-11-03):** the owner confirmed successful operation on
 RG40XX H with KNULLI after the three-file update was installed on the console's
-card. Current automated validation passes **48 tests** (30 pure tests and 18 tests
-against the official ARM64 application/DSP). ORBIX, transport/tab navigation fixes,
-control presets and bilingual advanced help are newer additions awaiting device verification.
-The checklist below covers
-additional per-assignment and extended testing; not every item has been
-individually confirmed by the owner.
+card. Beta.1 passed **48 tests** (30 pure tests and 18 tests against the official
+ARM64 application/DSP). The beta.2 language-scope fix has not been retested yet.
+The checklist below covers additional per-assignment and extended testing; not
+every item has been individually confirmed by the owner.
 
 ## Menu and navigation
 
@@ -48,12 +46,12 @@ Disabled controls remain editable; enabling one does not enable any other.
 The Reset Sound Params entry remains the original app action; the new Reset
 to Defaults affects only the four advanced assignments and needs confirmation.
 
-Contextual explanations for the selected setting, navigation/transport hints,
-reset confirmation and save-error messages follow native INFO LANGUAGE (EN/RU).
-Changes apply on the next render; no restart is needed. Parameter/effect names
-retain the existing app naming. As in native menus, the selected setting title
-and its two-line context help sit above the control list. Navigation and
-transport hints remain at the bottom.
+Contextual explanations for the selected setting and navigation/transport hints
+follow native INFO LANGUAGE (EN/RU). Menu labels, option names, confirmation
+titles and save-error messages stay in English. Changes apply on the next render;
+no restart is needed. Parameter/effect names retain the existing app naming. As
+in native menus, the selected setting title and its two-line context help sit
+above the control list. Navigation and transport hints remain at the bottom.
 
 ## Configuration
 
