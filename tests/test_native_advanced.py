@@ -238,10 +238,12 @@ class NativeIntegration(unittest.TestCase):
             self.snapshot('advanced-entry-' + language.lower())
             self.runtime.menu.open()
             seen = []
+            positions = []
             original_text = self.ui.text
 
             def text(message, *args, **kwargs):
                 seen.append(message)
+                positions.append((message, args[0], args[1]))
                 return original_text(message, *args, **kwargs)
 
             self.ui.text = text
@@ -249,7 +251,14 @@ class NativeIntegration(unittest.TestCase):
                 for page, index in (('root', 0), ('left_stick.options', 4), ('r2', 1)):
                     self.runtime.menu.page, self.runtime.menu.index = page, index
                     self.runtime.settings.data['r2']['effect'] = 'ORBIX'
+                    frame_start = len(positions)
                     self.runtime.draw(self.ui)
+                    frame = positions[frame_start:]
+                    help_lines = self.ui._wrap_info_text(self.runtime.help_text(self.ui), max_chars=64)
+                    help_ys = [y for message, x, y in frame if message in help_lines]
+                    row_ys = [y for message, x, y in frame if x == 64]
+                    self.assertTrue(help_ys)
+                    self.assertLess(max(help_ys), min(row_ys), 'Context help must be above the control list')
                     self.assertIn(self.runtime.help_text(self.ui),
                                   [pair[1 if language == 'RU' else 0] for pair in self.adapter.HELP.values()])
                     self.snapshot('advanced-help-' + language.lower())

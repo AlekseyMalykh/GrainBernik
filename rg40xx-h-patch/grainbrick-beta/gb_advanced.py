@@ -256,14 +256,23 @@ class Runtime:
                         else 'preset_subtitle')
         elif page.endswith('.options'):
             title += ' / OPTIONS'
-        ui.text(title, 54, 112, scale=3, color=ui.ACCENT)
-        ui.text(_localized(ui, MESSAGES, subtitle),
-                54, 165, scale=2, color=ui.DIM)
-        ui.text(_localized(ui, MESSAGES, 'transport'), 54, 196, scale=2, color=ui.DIM)
         rows = self.menu.rows()
+        if self.menu.confirm:
+            context_title = title
+            section = _localized(ui, MESSAGES, subtitle)
+        else:
+            selected_key, context_title, _ = rows[self.menu.index]
+            if selected_key in MESSAGES:
+                context_title = _localized(ui, MESSAGES, selected_key)
+            section = title
+        ui.text(context_title.upper(), 54, 112, scale=3, color=ui.ACCENT)
+        for line, y in zip(ui._wrap_info_text(self.help_text(ui), max_chars=64), (165, 191)):
+            ui.text(line, 54, y, scale=2, color=ui.DIM)
+        ui.text(section, 54, 225, scale=2, color=ui.DIM)
+        pygame.draw.line(screen, ui.VERY_DIM, (38, 250), (ui.WIDTH - 38, 250))
         start = max(0, min(self.menu.index - 5, len(rows) - 7))
         for i, (key, label, value) in enumerate(rows[start:start + 7], start):
-            y = 233 + (i - start) * 54
+            y = 274 + (i - start) * 50
             disabled = (page == 'root' and key in _core.CONTROLS
                         and not self.settings.data[key]['enabled'])
             if page == 'presets':
@@ -281,12 +290,10 @@ class Runtime:
             ui.text(label.upper(), 64, y, scale=3, color=color)
             ui.text(str(value).upper(), 540, y, scale=3, color=color)
         if len(rows) > 7:
-            ui.text('%d/%d' % (self.menu.index + 1, len(rows)), 894, 170, scale=2, color=ui.DIM)
-        help_text = self.help_text(ui)
-        for line, y in zip(ui._wrap_info_text(help_text, max_chars=64), (606, 632)):
-            ui.text(line, 54, y, scale=2, color=ui.DIM)
+            ui.text('%d/%d' % (self.menu.index + 1, len(rows)), 894, 225, scale=2, color=ui.DIM)
         if self.settings.error:
-            ui.text(_localized(ui, MESSAGES, 'not_saved'), 54, 658, scale=2, color=ui.ACCENT)
+            ui.text(_localized(ui, MESSAGES, 'not_saved'), 54, 632, scale=2, color=ui.ACCENT)
+        ui.text(_localized(ui, MESSAGES, 'transport'), 54, 658, scale=2, color=ui.DIM)
         ui.text(_localized(ui, MESSAGES, 'navigation'), 54, 680, scale=2, color=ui.DIM)
 
     def help_text(self, ui):

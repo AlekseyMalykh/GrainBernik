@@ -40,6 +40,9 @@ Open **SETTINGS**, select **ADVANCED SETTINGS**, then press **A** or **D-pad Rig
 
 **START** plays/stops without closing the menu. **L1/R1** switches the main tabs and closes the submenu; edited assignments are already saved and remain available when you return. Navigation hints, contextual help for each setting, reset confirmation and save errors follow the native **INFO LANGUAGE** setting (**EN/RU**) immediately; effect and parameter names retain the app's English naming.
 
+As in the native menus, the selected setting's title and explanation appear
+**above the control list**. Button and transport hints remain at the bottom.
+
 - **Sticks:** separate X/Y parameter assignments, including None; 12% default deadzone; sensitivity, X/Y inversion, Spring/Latch and time-based smoothing. The list is filtered using the running engine's real parameter bounds. Default physical axis indices are left 0/1 and right 2/3; Stick Options allows correcting them for a different controller layout. Calibrated analog-trigger axes are reserved.
 - **L2/R2:** independently choose **Hold** or **Toggle**, and **Freeze**, **Reverse**, **Delay Throw**, **Reverb Wash**, **Pitch Drop**, **Bypass**, **ORBIX** or **None**. These are reversible presets of existing engine parameters. Freeze uses native **Motion Hold** fragments, Reverse uses native Motion Reverse, and Bypass bypasses the delay/reverb/shimmer, tape, compressor and EQ processing while preserving sample/grain playback. ORBIX enables the native generator and restores its previous enable state on deactivation; it does not automatically change transport playback.
 - **Settings:** automatically saved under `grainbernik_advanced` in the existing `settings.json`; native app settings are preserved. All assignments start OFF. Turning a control OFF retains its selected parameters. Read/write failures are shown in the advanced menu.

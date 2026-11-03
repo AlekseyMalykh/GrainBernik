@@ -51,7 +51,9 @@ to Defaults affects only the four advanced assignments and needs confirmation.
 Contextual explanations for the selected setting, navigation/transport hints,
 reset confirmation and save-error messages follow native INFO LANGUAGE (EN/RU).
 Changes apply on the next render; no restart is needed. Parameter/effect names
-retain the existing app naming. Context help occupies two lines above the footer.
+retain the existing app naming. As in native menus, the selected setting title
+and its two-line context help sit above the control list. Navigation and
+transport hints remain at the bottom.
 
 ## Configuration
 
