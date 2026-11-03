@@ -1,6 +1,11 @@
 #!/bin/sh
-# GrainBernik: collect USB audio diagnostics into grainbrick-beta/audio_check.txt
-OUT=/userdata/roms/ports/grainbrick-beta/audio_check.txt
+# GrainBernik: collect USB audio diagnostics beside the installed application.
+BASE=/userdata/roms/ports
+if [ -d "$BASE/grainbrick beta 1.0.1" ]; then
+  OUT="$BASE/grainbrick beta 1.0.1/audio_check.txt"
+else
+  OUT="$BASE/grainbrick-beta/audio_check.txt"
+fi
 {
   echo "=== date"; date
   echo "=== uname"; uname -a

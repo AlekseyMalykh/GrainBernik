@@ -1,5 +1,6 @@
-# Public bootstrap, deliberately contains no proprietary application source.
-# + RG40XX H patch: scales the Brick 1024x768 UI to the real screen.
+# Public bootstrap for GrainBrick beta 1.0 / 1.0.1. No proprietary source.
+# GrainBrick 1.0.1 bundles NumPy and has native resolution and USB-audio
+# handling. Legacy adapters remain available for beta 1.0 installations.
 import importlib
 import importlib.util
 import os
@@ -13,19 +14,29 @@ if sys.version_info[:2] != (3, 12):
 if platform.machine().lower() not in ('aarch64', 'arm64'):
     raise SystemExit('GrainBrick: ARM64 required')
 
-# Import official KNULLI pygame/numpy before adding this app directory, so
-# an old standalone release's leftover folders cannot shadow system packages.
+# Do not let an app-local directory shadow KNULLI's Pygame. The 1.0.1
+# distribution intentionally bundles NumPy in _vendor; beta 1.0 uses the
+# system installation (or the optional user-provided compatibility package).
 sys.path[:] = [p for p in sys.path if Path(p or os.getcwd()).resolve() != APP]
-import pygame
-import numpy
+vendor = APP / '_vendor'
+if vendor.is_dir():
+    sys.path.insert(0, str(vendor))
+try:
+    import pygame
+    import numpy
+except Exception as exc:
+    raise SystemExit('GrainBrick: dependency load failed: ' + repr(exc)) from exc
+
 for package in (pygame, numpy):
     location = Path(package.__file__).resolve()
-    if APP == location or APP in location.parents:
-        raise SystemExit('GrainBrick: embedded third-party package detected: ' + str(location))
-print('EXTERNAL PYGAME:',pygame.__file__, 'NUMPY:',numpy.__file__,flush=True)
+    if APP == location or APP in location.parents and vendor not in location.parents:
+        raise SystemExit('GrainBrick: unexpected app-local dependency: ' + str(location))
+if vendor.is_dir() and (vendor not in Path(numpy.__file__).resolve().parents or numpy.__version__ != '1.26.4'):
+    raise SystemExit('GrainBrick: incompatible bundled NumPy: ' + str(numpy.__file__))
+print('EXTERNAL PYGAME:', pygame.__file__, 'NUMPY:', numpy.__file__, flush=True)
 
-# GrainBernik adapters for RG40XX H: button layout first (may show the
-# one-time calibration screen), then screen scaling 1024x768 -> 640x480.
+IS_UNIVERSAL_101 = vendor.is_dir()
+
 def _load_adapter(name):
     path = APP / (name + '.py')
     if not path.is_file():
@@ -38,11 +49,17 @@ def _load_adapter(name):
     except Exception as exc:
         print('GRAINBERNIK ADAPTER FAILED:', name, repr(exc), flush=True)
 
-_load_adapter('gb_audio')
+# These three adapters address hardware behavior that remains useful on the H.
 _load_adapter('gb_buttons')
-_load_adapter('gb_display_fit')
 _load_adapter('gb_advanced')
 
+# 1.0.1 now detects display sizes and USB capture devices itself. Keep its
+# native implementations by default; allow the older adapters as opt-ins.
+if not IS_UNIVERSAL_101 or os.environ.get('GRAINBERNIK_FIT', '0') == '1':
+    _load_adapter('gb_display_fit')
+if not IS_UNIVERSAL_101 or os.environ.get('GRAINBERNIK_LEGACY_AUDIO', '0') == '1':
+    _load_adapter('gb_audio')
+
 os.environ['GRAINBRICK_ROOT'] = str(APP)
-sys.path.insert(0,str(APP))
+sys.path.insert(0, str(APP))
 importlib.import_module('main')

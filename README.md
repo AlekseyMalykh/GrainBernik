@@ -4,39 +4,38 @@
 
 **GrainBernik** is an unofficial fork of [ETRNLIAM/GrainBrick](https://github.com/ETRNLIAM/GrainBrick) for the **Anbernic RG40XX H** (640×480) running KNULLI.
 
-GrainBrick draws its interface for the TrimUI Brick screen (1024×768). On a 640×480 screen you only see the top-left part of it. This fork adds a small launcher patch: the app keeps drawing at 1024×768 off-screen, and every frame is scaled down to the real screen. Both screens are 4:3, so the picture fills the whole display.
+GrainBrick beta 1.0.1 adds adaptive display resolution, controls and USB audio. GrainBernik keeps the RG40XX H button and Advanced Settings adapters. It leaves the new native display and USB audio handling in control by default; the older scaling and USB recording adapters remain opt-in.
 
 The patch does not modify or redistribute the closed GrainBrick application: you still need the official release ZIP from the original author.
 
-> Status: beta. Tested on RG40XX H with KNULLI: screen scaling, buttons, USB audio output and USB recording (Zoom H1n as audio interface).
+> Status: beta. The earlier GrainBrick beta 1.0 adaptation was tested on RG40XX H. The author has confirmed beta 1.0.1 on RG40XX V, but not RG40XX H; this adaptation still needs device verification.
 
-**Download:** [GrainBernik v0.1.0-beta.2](https://github.com/AlekseyMalykh/GrainBernik/releases/tag/v0.1.0-beta.2).
-Choose the **patch ZIP** for a fresh installation over the official GrainBrick
-release, or the **update ZIP** for an existing GrainBernik installation (only
-three adapter files). Both include installation instructions. The original
-closed application is not bundled. See [release notes](docs/releases/v0.1.0-beta.2.md).
+**Download:** [GrainBernik v0.1.1-beta.1](https://github.com/AlekseyMalykh/GrainBernik/releases/tag/v0.1.1-beta.1).
+Choose the **patch ZIP** for a fresh installation over official GrainBrick
+beta 1.0.1, or the **update ZIP** for an existing GrainBernik installation.
+The original closed application is not bundled. See [release notes](docs/releases/v0.1.1-beta.1.md).
 
 **Advanced Settings — working on RG40XX H.** The in-app **Settings → Advanced Settings** menu adds independent Left Stick, Right Stick, L2 and R2 assignments. All four start **OFF**. The owner confirmed successful operation of the initial version on RG40XX H with KNULLI on **2026-11-03**. Beta.1 passed **30 control/configuration checks and 18 integration checks against the official ARM64 application and DSP**; the beta.2 language fix has not been retested. The detailed checklist below remains useful for checking every assignment and longer sessions; the device confirmation is not an exhaustive compatibility report.
 
-**Latest update:** **v0.1.0-beta.2** keeps menu labels, options, confirmation titles and errors in English while contextual and navigation hints follow **INFO LANGUAGE → EN/RU**. The five presets, User slot, ORBIX assignments and submenu navigation remain available. The localization change awaits automated and on-device retesting; the previous beta's 48 checks do not cover this revision.
+**Latest update:** **v0.1.1-beta.1** integrates the official GrainBrick 1.0.1 update while keeping the prior English menu labels and INFO LANGUAGE-controlled hints. The updated fork has not yet been retested on the device.
 
 ## Install on RG40XX H
 
-1. Install the official release as described below (copy `grainbrick-beta/` and `GrainBrick beta 1.0.sh` to `/userdata/roms/ports/`). With the card in a PC, this is the `roms/ports` folder on the SHARE partition.
-2. Copy the files from [`rg40xx-h-patch/grainbrick-beta/`](rg40xx-h-patch/grainbrick-beta/) into `/userdata/roms/ports/grainbrick-beta/`, replacing `gb_launch.py`:
-   - `gb_display_fit.py` — the screen adapter;
+1. Download the official `grainbrick.beta.1.0.1.zip` from the [original releases](https://github.com/ETRNLIAM/GrainBrick/releases). Copy `grainbrick beta 1.0.1/` and `GrainBrick beta 1.0.1.sh` to `/userdata/roms/ports/` (the `roms/ports` folder on SHARE when the card is in a PC).
+2. Copy the files from [`rg40xx-h-patch/grainbrick-beta/`](rg40xx-h-patch/grainbrick-beta/) into `/userdata/roms/ports/grainbrick beta 1.0.1/`, replacing `gb_launch.py`:
+   - `gb_display_fit.py` — optional screen adapter for beta 1.0; disabled by default on 1.0.1;
    - `gb_buttons.py` — the button layout adapter;
-   - `gb_audio.py` — the USB recording adapter;
+   - `gb_audio.py` — legacy USB recording adapter for beta 1.0; disabled by default on 1.0.1;
    - `gb_advanced.py` and `gb_advanced_controls.py` — the in-app Advanced Settings and live control adapter (copy **both** files);
    - `gb_launch.py` — the original launcher plus a few lines that load the adapters.
 3. Copy [`rg40xx-h-patch/GrainBernik Buttons Setup.sh`](rg40xx-h-patch/) (and optionally `GrainBernik Audio Check.sh`) into `/userdata/roms/ports/`.
 4. Launch GrainBrick from PORTS. On the first launch a short button setup screen appears: press each button it asks for (A, B, X, Y, L1, R1, L2, R2, SELECT, START, MENU, D-pad, then optionally L3/R3 for TAB−/TAB+). Optional steps are skipped automatically after a few seconds.
 
-**Updating an existing GrainBernik installation:** to add Advanced Settings, copy just `gb_advanced.py`, `gb_advanced_controls.py` and the updated `gb_launch.py` into its `grainbrick-beta/` folder. Keep your existing `gb_buttons.json`, `settings.json`, `sound_state.json`, samples, projects and recordings. Existing audio/display/button adapters and USB helper scripts do not need replacing for this update. Make a backup of your current launcher and configuration before copying.
+**Updating an existing GrainBernik installation:** install the official beta 1.0.1 into its new `grainbrick beta 1.0.1/` folder, then copy the update ZIP contents there. Keep your existing `gb_buttons.json`, `settings.json`, `sound_state.json`, samples, projects and recordings. Copy user data only if needed; do not remove the old app folder until the new version has been checked on the device.
 
 ### Buttons
 
-GrainBrick reads the raw button numbers of the TrimUI Brick, so on other devices the button names in the app's hints don't match the physical buttons. `gb_buttons.py` records your device's layout once (saved to `grainbrick-beta/gb_buttons.json`) and translates every button press into the Brick's numbers. After that the button labelled **A** on the RG40XX H is **A** in GrainBrick, **L1** is **L1**, and so on. D-pad buttons are converted to the D-pad events the app expects; analog L2/R2 triggers are supported.
+`gb_buttons.py` records the RG40XX H button layout in `gb_buttons.json` and translates button events for GrainBrick. The new upstream controls are used where available; the adapter preserves the established button labels and hints.
 
 To redo the setup, run **GrainBernik Buttons Setup** from PORTS (or delete `gb_buttons.json`). Set `GRAINBRICK_BUTTONS=0` to turn the adapter off.
 
@@ -92,23 +91,24 @@ slot. A failed preset save leaves both the active setup and User unchanged.
 - The RG40XX H has no built-in microphone, so the BUILT-IN MIC source does not work.
 - Tested with a **Zoom H1n**: micro-USB to USB-C data cable into the OTG port, on the recorder choose *Audio Interface → PC/Mac*. Batteries in the H1n make the connection more reliable.
 - An iPhone cannot be used as a USB sound card on Linux.
-- If a device doesn't show up, run **GrainBernik Audio Check** from PORTS with it connected; it writes `grainbrick-beta/audio_check.txt` with what the system sees.
+- If a device doesn't show up, run **GrainBernik Audio Check** from PORTS with it connected; it writes `grainbrick beta 1.0.1/audio_check.txt` with what the system sees.
 - Optional: `GRAINBRICK_USB_IN=plughw:CARD=<id>,DEV=0` forces the capture device, `GRAINBRICK_AUDIO=0` turns the adapter off.
 
-Optional settings (environment variables, can be added to `GrainBrick beta 1.0.sh` before the `python3` line):
+Optional settings (environment variables, can be added to `GrainBrick beta 1.0.1.sh` before the `python3` line):
 
 | Variable | Values | Meaning |
 |---|---|---|
 | `GRAINBRICK_SCREEN` | e.g. `640x480` | Force the real screen size (default: auto-detect) |
 | `GRAINBRICK_SCALE` | `smooth` / `fast` | Scaling quality. `smooth` is the default and switches to `fast` automatically if the CPU is too slow |
-| `GRAINBRICK_FIT` | `0` | Turn the adapter off |
+| `GRAINBERNIK_FIT` | `1` | Enable the legacy display adapter on GrainBrick 1.0.1 |
+| `GRAINBERNIK_LEGACY_AUDIO` | `1` | Enable the legacy USB recording adapter on GrainBrick 1.0.1 |
 | `GRAINBERNIK_ADVANCED` | `0` | Disable the Advanced Settings/control adapter |
 
-The launcher log `grainbrick-beta/beta_port_launcher.log` contains a `GB DISPLAY FIT:` line with the detected sizes.
+On GrainBrick beta 1.0.1, check `grainbrick beta 1.0.1/gb_launch.log` for adapter status. The upstream native display handler is used by default.
 
 ## Установка на RG40XX H (кратко)
 
-Установите официальный релиз в `roms/ports`, затем скопируйте `gb_display_fit.py`, `gb_buttons.py`, `gb_audio.py`, **`gb_advanced.py`, `gb_advanced_controls.py`** и `gb_launch.py` из папки `rg40xx-h-patch/grainbrick-beta/` в `roms/ports/grainbrick-beta/` с заменой, а `GrainBernik Buttons Setup.sh` — в `roms/ports/`. Интерфейс будет уменьшен с 1024×768 до 640×480 на весь экран. При первом запуске появится экран настройки кнопок: нажимайте кнопки, которые он просит. После этого названия кнопок в подсказках приложения совпадут с надписями на приставке. Повторить настройку можно через порт «GrainBernik Buttons Setup». USB-звук: подключите USB-звуковую карту до запуска (проверено с Zoom H1n в режиме Audio Interface → PC/Mac), выберите её в OUTPUT, а для записи — источник USB AUDIO.
+Для установки скачайте `grainbrick.beta.1.0.1.zip`, затем скопируйте адаптеры из `rg40xx-h-patch/grainbrick-beta/` в `roms/ports/grainbrick beta 1.0.1/`. На этой версии GrainBernik оставляет родные адаптивный экран и USB-аудио активными; старые адаптеры экрана и USB-записи включаются только переменными окружения из таблицы выше. Первая настройка кнопок запускается автоматически.
 
 ### Расширенные настройки
 
@@ -147,9 +147,9 @@ GrainBrick turns audio samples into evolving, organic textures with granular pro
 
 It is designed for hands-on ambient exploration and sound design - not a tracker, sequencer or traditional looper.
 
-## GrainBrick beta 1.0
+## Official GrainBrick beta 1.0.1
 
-This is the first public beta for the original TrimUI Brick running KNULLI.
+This update adds adaptive resolution and controls, improved Anbernic compatibility and automatic USB audio input detection. RG40XX V is listed as tested by the author; RG40XX H is not.
 
 ## Features
 
@@ -178,11 +178,11 @@ Do not download GitHub's automatically generated “Source code” ZIP - that is
 ## Installation
 
 1. Download the release ZIP and extract its contents.
-2. Copy both grainbrick-beta/ and GrainBrick beta 1.0.sh to the Brick's /userdata/roms/ports/ directory.
+2. Copy both `grainbrick beta 1.0.1/` and `GrainBrick beta 1.0.1.sh` to `/userdata/roms/ports/`.
 3. Refresh your PORTS list in KNULLI.
-4. Launch GrainBrick beta 1.0.
+4. Launch GrainBrick beta 1.0.1.
 
-When upgrading, preserve your own samples, projects, recordings and settings. Do not delete your existing grainbrick-beta/ folder without backing them up.
+When upgrading, preserve your samples, projects, recordings and settings. Keep the old folder until the updated release has been checked on your device.
 
 ## Feedback
 
