@@ -1,0 +1,283 @@
+"""In-app Advanced Settings adapter for the official GrainBrick beta 1.0.
+
+Loaded after button calibration and display scaling, before importing main.
+At pygame.init() the embedded engine/UI modules already exist. Only their
+public Python classes and ParameterBus are wrapped; no original file or DSP
+binary is edited. Unsupported module layouts leave the original app running.
+"""
+import atexit
+import importlib.util
+import os
+from pathlib import Path
+import sys
+import time
+
+import pygame
+
+APP = Path(__file__).resolve().parent
+_spec = importlib.util.spec_from_file_location('gb_advanced_controls', APP / 'gb_advanced_controls.py')
+_core = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_core)
+ADVANCED_PARAM = 'settings.grainbernik_advanced'
+_installed = False
+_attached = False
+_runtime = None
+
+
+def _log(message):
+    print('GB ADVANCED: ' + message, flush=True)
+
+
+class Runtime:
+    def __init__(self, controller, settings_path):
+        self.controller = controller
+        self.settings = _core.Settings(settings_path)
+        self.controls = _core.Controls(controller.parameters, self.settings)
+        self.menu = _core.Menu(self.settings, self.controls)
+        self.ui = None
+        self.input = None
+        self.claimed_buttons = set()
+        self.focused = True
+        self.excluded_axes = set()
+        try:
+            import json
+            data = json.loads((APP / 'gb_buttons.json').read_text(encoding='utf-8'))
+            self.excluded_axes = {int(x) for x in data.get('trigger_axes', {}).values()}
+        except (OSError, ValueError, TypeError):
+            pass
+
+    def performance(self):
+        ui = self.ui
+        return (self.focused and self.menu.page is None
+                and self.controller.current_tab in ('GRAIN', 'FX', 'TAPE', 'VISUAL')
+                and not getattr(ui, 'info_mode', False)
+                and not getattr(ui, 'button_map_active', False)
+                and not getattr(self.input, 'capture_mode', False))
+
+    def events(self, events):
+        result = []
+        for event in events:
+            kind = event.type
+            if kind in (pygame.QUIT, getattr(pygame, 'JOYDEVICEREMOVED', -1)):
+                self.controls.cancel()
+                self.focused = False
+            elif kind == getattr(pygame, 'WINDOWFOCUSLOST', -2):
+                self.focused = False
+                self.controls.cancel()
+            elif kind == getattr(pygame, 'WINDOWFOCUSGAINED', -3):
+                self.focused = True
+            if kind in (pygame.JOYBUTTONDOWN, pygame.JOYBUTTONUP) and event.button in (10, 11):
+                button = event.button
+                name = 'l2' if button == 10 else 'r2'
+                down = kind == pygame.JOYBUTTONDOWN
+                # Do not steal buttons from the app's own rebinding overlay.
+                eligible = (self.performance() and self.settings.data[name]['enabled']
+                            and self.settings.data[name]['effect'] in self.controls.effect_choices()
+                            and self.settings.data[name]['effect'] is not None)
+                if down and eligible:
+                    self.claimed_buttons.add(button)
+                    self.controls.button(name, True)
+                    continue
+                if not down and button in self.claimed_buttons:
+                    self.claimed_buttons.discard(button)
+                    self.controls.button(name, False, self.performance())
+                    continue
+            # Sticks have no native GrainBrick binding. Leave disabled and
+            # unassigned axes untouched, including calibrated analog triggers.
+            if kind == pygame.JOYAXISMOTION and self.performance():
+                if any(cfg['enabled'] and cfg[axis] is not None
+                       and event.axis == cfg['axis_' + axis]
+                       and event.axis not in self.excluded_axes
+                       for name in ('left_stick', 'right_stick')
+                       for cfg in (self.settings.data[name],) for axis in ('x', 'y')):
+                    continue
+            result.append(event)
+        return result
+
+    def tick(self, input_manager):
+        self.input = input_manager
+        axes = {}
+        joy = input_manager.joy
+        try:
+            if self.performance() and any(self.settings.data[n]['enabled']
+                                           for n in ('left_stick', 'right_stick')):
+                axes = {i: joy.get_axis(i) for i in range(joy.get_numaxes())}
+        except pygame.error:
+            self.controls.cancel()
+        self.controls.tick(axes, time.monotonic(), self.performance(), self.excluded_axes)
+
+    def handle(self, action):
+        if self.menu.page is not None:
+            if action == 'EXIT':
+                self.controls.cancel()
+                return False
+            self.menu.handle(action)
+            return True
+        if (self.controller.current_tab == 'SETTINGS'
+                and self.controller.current_param == ADVANCED_PARAM
+                and action in ('A', 'RIGHT')):
+            self.menu.open()
+            if self.ui:
+                self.ui.info_mode = False
+            return True
+        return False
+
+    def draw(self, ui):
+        screen = ui.screen
+        pygame.draw.rect(screen, ui.BG, (0, 88, ui.WIDTH, ui.HEIGHT - 132))
+        page = self.menu.page
+        title = 'ADVANCED SETTINGS' if page == 'root' else self.menu.LABELS[page.split('.')[0]].upper()
+        if self.menu.confirm:
+            title = 'RESTORE DEFAULTS?'
+        elif page.endswith('.options'):
+            title += ' / OPTIONS'
+        ui.text(title, 54, 112, scale=3, color=ui.ACCENT)
+        ui.text('RESTORES ONLY THESE FOUR CONTROLS' if self.menu.confirm
+                else 'INDEPENDENT PERFORMANCE CONTROLS', 54, 165, scale=2, color=ui.DIM)
+        rows = self.menu.rows()
+        start = max(0, min(self.menu.index - 5, len(rows) - 7))
+        for i, (key, label, value) in enumerate(rows[start:start + 7], start):
+            y = 233 + (i - start) * 54
+            disabled = (page == 'root' and key in _core.CONTROLS
+                        and not self.settings.data[key]['enabled'])
+            if page != 'root' and not self.menu.confirm:
+                disabled = not self.settings.data[page.split('.')[0]]['enabled'] and key != 'back'
+            selected = i == self.menu.index
+            color = ui.ACCENT if selected else ui.DIM if disabled else ui.WHITE
+            if selected:
+                ui.text('>', 32, y, scale=3, color=ui.ACCENT)
+            ui.text(label.upper(), 64, y, scale=3, color=color)
+            ui.text(str(value).upper(), 540, y, scale=3, color=color)
+        if len(rows) > 7:
+            ui.text('%d/%d' % (self.menu.index + 1, len(rows)), 894, 170, scale=2, color=ui.DIM)
+        if self.settings.error:
+            ui.text('NOT SAVED - CHECK SETTINGS FILE / STORAGE', 54, 665, scale=2, color=ui.ACCENT)
+        elif page in ('l2', 'r2') and self.settings.data[page]['effect'] == 'Freeze':
+            ui.text('FREEZE = NATIVE MOTION HOLD FRAGMENTS', 54, 665, scale=2, color=ui.DIM)
+        ui.text('D-PAD: SELECT/CHANGE   A: OPEN/CHANGE   B: BACK', 54, 680, scale=2, color=ui.DIM)
+
+
+def _attach():
+    global _attached
+    if _attached:
+        return True
+    modules = [sys.modules.get(name) for name in ('engine.control', 'engine.input', 'ui.renderer')]
+    if any(mod is None for mod in modules):
+        return False
+    control_mod, input_mod, renderer_mod = modules
+    ControlManager, InputManager, UIEngine = control_mod.ControlManager, input_mod.InputManager, renderer_mod.UIEngine
+    if not all(hasattr(ControlManager, key) for key in ('SETTINGS_PARAMS', 'handle')):
+        _log('unsupported engine, original controls retained')
+        return False
+    original_control_init = ControlManager.__init__
+    original_handle = ControlManager.handle
+    original_ui_init = UIEngine.__init__
+    original_draw_settings = UIEngine.draw_settings_page
+    original_save_settings = UIEngine._save_settings
+    original_footer_hint = UIEngine.footer_hint
+    original_poll = InputManager.poll
+    original_close = InputManager.close
+
+    def control_init(self, *args, **kwargs):
+        global _runtime
+        original_control_init(self, *args, **kwargs)
+        _runtime = Runtime(self, UIEngine.SETTINGS_PATH)
+
+    def handle(self, action, value=None):
+        if _runtime is not None and _runtime.controller is self and _runtime.handle(action):
+            return
+        result = original_handle(self, action, value)
+        if _runtime is not None and not _runtime.performance():
+            _runtime.controls.cancel()
+        return result
+
+    def ui_init(self, *args, **kwargs):
+        original_ui_init(self, *args, **kwargs)
+        if _runtime is not None:
+            _runtime.ui = self
+
+    def draw_settings(self, controls):
+        runtime = _runtime
+        if runtime is not None and runtime.menu.page is not None:
+            runtime.draw(self)
+            return
+        original_draw_settings(self, controls)
+        selected = controls.current_param == ADVANCED_PARAM
+        color = self.ACCENT if selected else self.WHITE
+        if selected:
+            # Supply the contextual help for the new native settings row.
+            pygame.draw.rect(self.screen, self.BG, (0, 88, self.WIDTH, 200))
+            self.text('ADVANCED SETTINGS', 54, 122, scale=4, color=self.ACCENT)
+            self.text('ASSIGN STICKS AND L2/R2 TO SOUND PARAMETERS.', 54, 196, scale=3, color=self.WHITE)
+            self.text('EACH CONTROL CAN BE ENABLED SEPARATELY.', 54, 232, scale=3, color=self.WHITE)
+            self.text('>', 34, 678, scale=3, color=color)
+        self.text('ADVANCED SETTINGS', 64, 678, scale=3, color=color)
+        self.text('>', 480, 678, scale=3, color=color)
+
+    def save_settings(self):
+        # Native settings changes must not erase our nested configuration.
+        preserved = None
+        if _runtime is not None:
+            try:
+                preserved = _runtime.settings._read()
+            except (OSError, ValueError, TypeError):
+                pass
+        result = original_save_settings(self)
+        if _runtime is not None:
+            _runtime.settings.save(preserved)
+        return result
+
+    def footer_hint(self, message):
+        if _runtime is not None and _runtime.menu.page is not None:
+            message = {'UP/DOWN': 'D-PAD SELECT',
+                       'B / A CHANGE': 'A CHANGE / B BACK'}.get(message, message)
+        return original_footer_hint(self, message)
+
+    def poll(self, *args, **kwargs):
+        if _runtime is not None:
+            _runtime.input = self
+        result = original_poll(self, *args, **kwargs)
+        if _runtime is not None:
+            _runtime.tick(self)
+            if any(action in ('EXIT', 'QUIT') for action, value in result):
+                # Unwind before main saves its sound state on shutdown.
+                _runtime.controls.cancel()
+            if _runtime.menu.page is not None:
+                # SELECT is intercepted directly by main before ControlManager.
+                result = [(action, value) for action, value in result if action != 'SELECT']
+        return result
+
+    def close(self):
+        if _runtime is not None:
+            _runtime.controls.cancel()
+        return original_close(self)
+
+    ControlManager.SETTINGS_PARAMS = list(ControlManager.SETTINGS_PARAMS) + [ADVANCED_PARAM]
+    ControlManager.__init__, ControlManager.handle = control_init, handle
+    UIEngine.__init__, UIEngine.draw_settings_page, UIEngine._save_settings = ui_init, draw_settings, save_settings
+    UIEngine.footer_hint = footer_hint
+    InputManager.poll, InputManager.close = poll, close
+    _attached = True
+    _log('attached to native Settings / ParameterBus')
+    return True
+
+
+def install():
+    global _installed
+    if _installed or os.environ.get('GRAINBERNIK_ADVANCED', '1') == '0':
+        return
+    original_init = pygame.init
+    original_get = pygame.event.get
+
+    def init(*args, **kwargs):
+        _attach()
+        return original_init(*args, **kwargs)
+
+    def get(*args, **kwargs):
+        events = original_get(*args, **kwargs)
+        return _runtime.events(events) if _runtime is not None else events
+
+    pygame.init, pygame.event.get = init, get
+    atexit.register(lambda: _runtime.controls.cancel() if _runtime is not None else None)
+    _installed = True
+    _log('installed; waiting for native engine initialization')

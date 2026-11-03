@@ -41,6 +41,7 @@ def _load_adapter(name):
 _load_adapter('gb_audio')
 _load_adapter('gb_buttons')
 _load_adapter('gb_display_fit')
+_load_adapter('gb_advanced')
 
 os.environ['GRAINBRICK_ROOT'] = str(APP)
 sys.path.insert(0,str(APP))

@@ -8,6 +8,8 @@ The patch does not modify or redistribute the closed GrainBrick application: you
 
 > Status: beta. Tested on RG40XX H with KNULLI: screen scaling, buttons, USB audio output and USB recording (Zoom H1n as audio interface).
 
+**New: Advanced Settings — working on RG40XX H.** The in-app **Settings → Advanced Settings** menu adds independent Left Stick, Right Stick, L2 and R2 assignments. All four start **OFF**. The owner confirmed successful operation on RG40XX H with KNULLI on **2026-11-03**, after installing the update on the device's card. Automated checks also pass: **18 control/configuration tests and 9 integration tests against the official ARM64 application and DSP**. The detailed checklist below remains useful for checking every assignment and longer sessions; the device confirmation is not an exhaustive compatibility report.
+
 ## Install on RG40XX H
 
 1. Install the official release as described below (copy `grainbrick-beta/` and `GrainBrick beta 1.0.sh` to `/userdata/roms/ports/`). With the card in a PC, this is the `roms/ports` folder on the SHARE partition.
@@ -15,15 +17,31 @@ The patch does not modify or redistribute the closed GrainBrick application: you
    - `gb_display_fit.py` — the screen adapter;
    - `gb_buttons.py` — the button layout adapter;
    - `gb_audio.py` — the USB recording adapter;
+   - `gb_advanced.py` and `gb_advanced_controls.py` — the in-app Advanced Settings and live control adapter (copy **both** files);
    - `gb_launch.py` — the original launcher plus a few lines that load the adapters.
 3. Copy [`rg40xx-h-patch/GrainBernik Buttons Setup.sh`](rg40xx-h-patch/) (and optionally `GrainBernik Audio Check.sh`) into `/userdata/roms/ports/`.
 4. Launch GrainBrick from PORTS. On the first launch a short button setup screen appears: press each button it asks for (A, B, X, Y, L1, R1, L2, R2, SELECT, START, MENU, D-pad, then optionally L3/R3 for TAB−/TAB+). Optional steps are skipped automatically after a few seconds.
+
+**Updating an existing GrainBernik installation:** to add Advanced Settings, copy just `gb_advanced.py`, `gb_advanced_controls.py` and the updated `gb_launch.py` into its `grainbrick-beta/` folder. Keep your existing `gb_buttons.json`, `settings.json`, `sound_state.json`, samples, projects and recordings. Existing audio/display/button adapters and USB helper scripts do not need replacing for this update. Make a backup of your current launcher and configuration before copying.
 
 ### Buttons
 
 GrainBrick reads the raw button numbers of the TrimUI Brick, so on other devices the button names in the app's hints don't match the physical buttons. `gb_buttons.py` records your device's layout once (saved to `grainbrick-beta/gb_buttons.json`) and translates every button press into the Brick's numbers. After that the button labelled **A** on the RG40XX H is **A** in GrainBrick, **L1** is **L1**, and so on. D-pad buttons are converted to the D-pad events the app expects; analog L2/R2 triggers are supported.
 
 To redo the setup, run **GrainBernik Buttons Setup** from PORTS (or delete `gb_buttons.json`). Set `GRAINBRICK_BUTTONS=0` to turn the adapter off.
+
+### Advanced Settings
+
+Open **SETTINGS**, select **ADVANCED SETTINGS**, then press **A** or **D-pad Right**. Four submenus configure **Left Stick**, **Right Stick**, **L2 Button** and **R2 Button** independently. D-pad Up/Down selects a row; Left/Right or A changes its value; B goes back. Disabled controls stay editable and keep their assignments. Stick Options scrolls when needed; Reset to Defaults requires confirmation and resets only these extra controls.
+
+- **Sticks:** separate X/Y parameter assignments, including None; 12% default deadzone; sensitivity, X/Y inversion, Spring/Latch and time-based smoothing. The list is filtered using the running engine's real parameter bounds. Default physical axis indices are left 0/1 and right 2/3; Stick Options allows correcting them for a different controller layout. Calibrated analog-trigger axes are reserved.
+- **L2/R2:** independently choose **Hold** or **Toggle**, and **Freeze**, **Reverse**, **Delay Throw**, **Reverb Wash**, **Pitch Drop**, **Bypass** or **None**. These are reversible presets of existing engine parameters. Freeze uses native **Motion Hold** fragments, Reverse uses native Motion Reverse, and Bypass bypasses the delay/reverb/shimmer, tape, compressor and EQ processing while preserving sample/grain playback.
+- **Settings:** automatically saved under `grainbernik_advanced` in the existing `settings.json`; native app settings are preserved. All assignments start OFF. Turning a control OFF retains its selected parameters. Read/write failures are shown in the advanced menu.
+- **Scope:** assignments operate on the GRAIN, FX, TAPE and VISUAL tabs. Browsing samples, Settings, Save, help/button rebinding, loss of focus, controller removal and exit release temporary effects. Spring returns to the gesture's initial value; Latch retains the last value at center until the control is disabled or a non-performance screen is entered. Returning from a menu requires a fresh button press or centered stick.
+- **Available XY parameters in beta 1.0:** Grain Position/Size/Density/Pitch/Spray; Delay Time/Feedback/Mix/Lowpass; Reverb Mix/Size/Decay; Shimmer Amount/Pitch; Roam Speed; Tape Saturation/Wow/Flutter. Grain and motion parameters require their respective native processing modes to be active.
+- **Limits:** the current public ParameterBus does not expose Filter Cutoff/Resonance, Tape Speed or Pan. No direct Stutter, Tape Stop or Glitch API was verified, so these are **not offered**. Delay Throw/Reverb Wash are parameter presets, not a new send/return routing system. Original closed application/DSP files remain unmodified.
+
+Detailed behavior, test commands and the on-device checklist: [Advanced Settings](docs/ADVANCED_SETTINGS.md). Set `GRAINBERNIK_ADVANCED=0` to disable this adapter.
 
 ### USB audio
 
@@ -42,12 +60,27 @@ Optional settings (environment variables, can be added to `GrainBrick beta 1.0.s
 | `GRAINBRICK_SCREEN` | e.g. `640x480` | Force the real screen size (default: auto-detect) |
 | `GRAINBRICK_SCALE` | `smooth` / `fast` | Scaling quality. `smooth` is the default and switches to `fast` automatically if the CPU is too slow |
 | `GRAINBRICK_FIT` | `0` | Turn the adapter off |
+| `GRAINBERNIK_ADVANCED` | `0` | Disable the Advanced Settings/control adapter |
 
 The launcher log `grainbrick-beta/beta_port_launcher.log` contains a `GB DISPLAY FIT:` line with the detected sizes.
 
 ## Установка на RG40XX H (кратко)
 
-Установите официальный релиз в `roms/ports`, затем скопируйте `gb_display_fit.py`, `gb_buttons.py`, `gb_audio.py` и `gb_launch.py` из папки `rg40xx-h-patch/grainbrick-beta/` в `roms/ports/grainbrick-beta/` с заменой, а `GrainBernik Buttons Setup.sh` — в `roms/ports/`. Интерфейс будет уменьшен с 1024×768 до 640×480 на весь экран. При первом запуске появится экран настройки кнопок: нажимайте кнопки, которые он просит. После этого названия кнопок в подсказках приложения совпадут с надписями на приставке. Повторить настройку можно через порт «GrainBernik Buttons Setup». USB-звук: подключите USB-звуковую карту до запуска (проверено с Zoom H1n в режиме Audio Interface → PC/Mac), выберите её в OUTPUT, а для записи — источник USB AUDIO.
+Установите официальный релиз в `roms/ports`, затем скопируйте `gb_display_fit.py`, `gb_buttons.py`, `gb_audio.py`, **`gb_advanced.py`, `gb_advanced_controls.py`** и `gb_launch.py` из папки `rg40xx-h-patch/grainbrick-beta/` в `roms/ports/grainbrick-beta/` с заменой, а `GrainBernik Buttons Setup.sh` — в `roms/ports/`. Интерфейс будет уменьшен с 1024×768 до 640×480 на весь экран. При первом запуске появится экран настройки кнопок: нажимайте кнопки, которые он просит. После этого названия кнопок в подсказках приложения совпадут с надписями на приставке. Повторить настройку можно через порт «GrainBernik Buttons Setup». USB-звук: подключите USB-звуковую карту до запуска (проверено с Zoom H1n в режиме Audio Interface → PC/Mac), выберите её в OUTPUT, а для записи — источник USB AUDIO.
+
+### Расширенные настройки
+
+Внутри программы: **SETTINGS → ADVANCED SETTINGS**. Это новый пункт существующих настроек, а не отдельный порт. В нём четыре независимых подменю: **Left Stick**, **Right Stick**, **L2 Button**, **R2 Button**. Все четыре назначения изначально выключены. Крестовина вверх/вниз выбирает строку, влево/вправо или A меняют значение, B возвращает назад. Выключенные элементы приглушены, но доступны для настройки. Сброс этих настроек требует подтверждения.
+
+Стикам назначаются отдельные параметры X/Y или None. Есть мёртвая зона (по умолчанию 12%), чувствительность, инверсия осей, сглаживание и режимы Spring/Latch. Spring возвращает значение к началу жеста, Latch оставляет последнее значение после отпускания стика. В Stick Options также можно поменять номера физических осей, если стандартные 0/1 и 2/3 не подходят устройству.
+
+L2/R2 поддерживают Hold/Toggle и назначения **Freeze, Reverse, Delay Throw, Reverb Wash, Pitch Drop, Bypass, None**. Это управление существующими параметрами: Freeze — штатное удержание фрагментов Motion Hold, Reverse — Motion Reverse; Bypass отключает эффекты, сохраняя воспроизведение. Отдельные Stutter/Tape Stop/Glitch, Filter Cutoff/Resonance, Tape Speed и Pan не добавлены: рабочего доступа к ним в текущей шине не найдено. Список XY включает только реально доступные параметры гранулятора, delay, reverb, shimmer и tape, а также Roam Speed.
+
+Настройки автоматически сохраняются в существующий `settings.json`, в раздел `grainbernik_advanced`. Выключение не стирает назначения. Управление действует на вкладках GRAIN/FX/TAPE/VISUAL. При входе в браузер, настройки, сохранение или справку, при потере фокуса, отключении контроллера и выходе временные эффекты снимаются, включая Toggle/Latch. После возвращения нужна новая кнопка или возврат стика в центр.
+
+**Работа подтверждена владельцем на RG40XX H с KNULLI 3 ноября 2026 года**, после записи обновления на карту. Также прошли **27 автотестов**: 18 логических и 9 с настоящим ARM64-приложением и оригинальным DSP. Это подтверждение работы функции; отдельные назначения и длительные сессии можно дополнительно проверить по [подробному сценарию](docs/ADVANCED_SETTINGS.md).
+
+Для обновления уже установленного GrainBernik достаточно скопировать **`gb_advanced.py`, `gb_advanced_controls.py` и обновлённый `gb_launch.py`**. Существующие адаптеры звука/кнопок/экрана, USB-скрипты, настройки, сэмплы, проекты и записи сохраняйте. Перед заменой сделайте резервную копию загрузчика и настроек.
 
 ---
 
