@@ -10,6 +10,12 @@ The patch does not modify or redistribute the closed GrainBrick application: you
 
 > Status: beta. Tested on RG40XX H with KNULLI: screen scaling, buttons, USB audio output and USB recording (Zoom H1n as audio interface).
 
+**Download:** [GrainBernik v0.1.0-beta.1](https://github.com/AlekseyMalykh/GrainBernik/releases/tag/v0.1.0-beta.1).
+Choose the **patch ZIP** for a fresh installation over the official GrainBrick
+release, or the **update ZIP** for an existing GrainBernik installation (only
+three adapter files). Both include installation instructions. The original
+closed application is not bundled. See [release notes](docs/releases/v0.1.0-beta.1.md).
+
 **New: Advanced Settings — working on RG40XX H.** The in-app **Settings → Advanced Settings** menu adds independent Left Stick, Right Stick, L2 and R2 assignments. All four start **OFF**. The owner confirmed successful operation of the initial version on RG40XX H with KNULLI on **2026-11-03**. Automated checks now cover **30 control/configuration tests and 18 integration tests against the official ARM64 application and DSP**. The detailed checklist below remains useful for checking every assignment and longer sessions; the device confirmation is not an exhaustive compatibility report.
 
 **Latest update:** five control presets and one User slot; ORBIX assignments (13 XY parameters and a Hold/Toggle button), START playback control and L1/R1 tab switching from every advanced submenu, and contextual/navigation help following **INFO LANGUAGE → EN/RU**. These additions pass automated checks and await a new on-device check.
