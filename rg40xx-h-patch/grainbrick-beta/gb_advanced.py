@@ -40,6 +40,20 @@ MESSAGES = {
     'entry_help2': ('EACH CONTROL CAN BE ENABLED SEPARATELY.', 'КАЖДЫЙ ОРГАН ВКЛЮЧАЕТСЯ НЕЗАВИСИМО.'),
     'cancel': ('Cancel', 'Отмена'),
     'restore': ('Restore Defaults', 'Вернуть по умолчанию'),
+    'presets': ('Presets', 'Пресеты'),
+    'factory_title': ('APPLY PRESET?', 'ПРИМЕНИТЬ ПРЕСЕТ?'),
+    'save_user_title': ('SAVE CURRENT TO USER?', 'СОХРАНИТЬ ТЕКУЩУЮ В USER?'),
+    'load_user_title': ('LOAD USER PRESET?', 'ЗАГРУЗИТЬ ПРЕСЕТ USER?'),
+    'preset_subtitle': ('CONTROL ASSIGNMENTS ONLY; SOUND IS UNCHANGED', 'ТОЛЬКО НАЗНАЧЕНИЯ; ЗВУК НЕ МЕНЯЕТСЯ'),
+    'archive_subtitle': ('CURRENT SETUP WILL BE SAVED TO EMPTY USER SLOT', 'ТЕКУЩАЯ РАСКЛАДКА СОХРАНИТСЯ В ПУСТОЙ USER'),
+    'save_user_subtitle': ('REPLACES THE SAVED USER SLOT', 'ЗАМЕНЯЕТ СОХРАНЁННЫЙ ПОЛЬЗОВАТЕЛЬСКИЙ СЛОТ'),
+    'save_current_subtitle': ('SAVES ALL FOUR CONTROLS AND THEIR OPTIONS', 'СОХРАНИТЬ ЧЕТЫРЕ ОРГАНА И ИХ ПАРАМЕТРЫ'),
+    'apply_preset': ('Apply Preset', 'Применить пресет'),
+    'save_user': ('Save Current', 'Сохранить текущую'),
+    'load_user': ('Load User', 'Загрузить свою'),
+    'Saved': ('Saved', 'Сохранено'),
+    'Empty': ('Empty', 'Пусто'),
+    'Unavailable': ('Unavailable', 'Недоступно'),
 }
 HELP = {
     'stick': ('Assign independent X/Y parameters to this stick. OFF keeps its assignments and native input.',
@@ -92,9 +106,25 @@ HELP = {
               'Требует подтверждения. Сброс только четырёх назначений; звук и штатные настройки сохраняются.'),
     'back': ('Return one menu level. Assignments are already saved. L1/R1 changes main tabs.',
              'Назад на один уровень. Назначения уже сохранены. L1/R1 переключают основные вкладки.'),
-    'cancel': ('Keep current assignments and cancel restoring defaults.', 'Сохранить текущие назначения и отменить сброс.'),
+    'cancel': ('Keep current assignments and cancel this operation.', 'Сохранить текущие назначения и отменить операцию.'),
     'restore': ('Turn all four controls OFF and restore their default assignments and options.',
                 'Выключить четыре органа и вернуть их назначения и параметры по умолчанию.'),
+    'presets': ('Five factory layouts and one User slot. Changes require confirmation; saved User is preserved.',
+                'Пять готовых раскладок и слот User. Выбор пресета не перезаписывает занятый User.'),
+    'Granular': ('L: Position/Size; R: Pitch/Density. L2 Freeze, R2 Reverse. Spring, 70% sensitivity.',
+                 'Слева Position/Size; справа Pitch/Density. L2 Freeze, R2 Reverse. Spring, чувствительность 70%.'),
+    'Ambient': ('L: Position/Spray; R: Reverb/Shimmer. L2 Freeze, R2 Reverb Wash. Gentle 180 ms response.',
+                'Слева Position/Spray; справа Reverb/Shimmer. L2 Freeze, R2 Reverb Wash. Плавный отклик 180 мс.'),
+    'Echo': ('L: Delay Time/Feedback; R: Delay/Reverb Mix. L2 Delay Throw, R2 Reverb Wash.',
+             'Слева Delay Time/Feedback; справа Delay/Reverb Mix. L2 Delay Throw, R2 Reverb Wash.'),
+    'Tape': ('L: Saturation/Wow; R: Pitch/Flutter. L2 Pitch Drop, R2 Bypass. Sensitivity 40%.',
+             'Слева Saturation/Wow; справа Pitch/Flutter. L2 Pitch Drop, R2 Bypass. Чувствительность 40%.'),
+    'ORBIX Play': ('L: Rotation/Gravity; R: Bounce/Reverb. L2 ORBIX Toggle, R2 Reverb Wash. START plays/stops.',
+                   'Слева Rotation/Gravity; справа Bounce/Reverb. L2 ORBIX Toggle, R2 Reverb Wash. START: пуск/стоп.'),
+    'load_user': ('Load your saved four-control setup. Empty slot cannot be loaded. Changes need confirmation.',
+                  'Загрузить свою раскладку четырёх органов. Пустой слот недоступен. Нужны подтверждение и A.'),
+    'save_user': ('Save all four current assignments and options into User. Confirm before replacing the saved slot.',
+                  'Сохранить четыре текущих назначения и параметры в User. Замена слота требует подтверждения.'),
 }
 
 
@@ -190,7 +220,7 @@ class Runtime:
                 # Assignments are saved on edit. Leave the overlay before
                 # switching the native tab so it cannot keep capturing input.
                 self.controls.cancel()
-                self.menu.page, self.menu.confirm = None, False
+                self.menu.page, self.menu.confirm, self.menu.pending = None, False, None
                 self.controller.change_tab(-1 if action in ('L', 'TAB_PREV') else 1)
                 return True
             if action in ('EXIT', 'START'):
@@ -211,13 +241,23 @@ class Runtime:
         screen = ui.screen
         pygame.draw.rect(screen, ui.BG, (0, 88, ui.WIDTH, ui.HEIGHT - 132))
         page = self.menu.page
-        title = 'ADVANCED SETTINGS' if page == 'root' else self.menu.LABELS[page.split('.')[0]].upper()
+        title = ('ADVANCED SETTINGS' if page == 'root' else _localized(ui, MESSAGES, 'presets').upper()
+                 if page == 'presets' else self.menu.LABELS[page.split('.')[0]].upper())
+        subtitle = 'subtitle'
         if self.menu.confirm:
-            title = _localized(ui, MESSAGES, 'reset_title')
+            kind = self.menu.pending[0] if self.menu.pending is not None else 'reset'
+            title = _localized(ui, MESSAGES, kind + '_title')
+            if kind == 'factory':
+                title += ' ' + self.menu.pending[1].upper()
+            subtitle = ('reset_subtitle' if kind == 'reset' else
+                        ('save_user_subtitle' if self.settings.user_preset is not None else 'save_current_subtitle')
+                        if kind == 'save_user' else
+                        'archive_subtitle' if kind == 'factory' and self.settings.user_preset is None
+                        else 'preset_subtitle')
         elif page.endswith('.options'):
             title += ' / OPTIONS'
         ui.text(title, 54, 112, scale=3, color=ui.ACCENT)
-        ui.text(_localized(ui, MESSAGES, 'reset_subtitle' if self.menu.confirm else 'subtitle'),
+        ui.text(_localized(ui, MESSAGES, subtitle),
                 54, 165, scale=2, color=ui.DIM)
         ui.text(_localized(ui, MESSAGES, 'transport'), 54, 196, scale=2, color=ui.DIM)
         rows = self.menu.rows()
@@ -226,14 +266,18 @@ class Runtime:
             y = 233 + (i - start) * 54
             disabled = (page == 'root' and key in _core.CONTROLS
                         and not self.settings.data[key]['enabled'])
-            if page != 'root' and not self.menu.confirm:
+            if page == 'presets':
+                disabled = value == 'Unavailable' or key == 'load_user' and self.settings.user_preset is None
+            if page not in ('root', 'presets') and not self.menu.confirm:
                 disabled = not self.settings.data[page.split('.')[0]]['enabled'] and key != 'back'
             selected = i == self.menu.index
             color = ui.ACCENT if selected else ui.DIM if disabled else ui.WHITE
             if selected:
                 ui.text('>', 32, y, scale=3, color=ui.ACCENT)
-            if self.menu.confirm:
+            if key in MESSAGES and (self.menu.confirm or key in ('presets', 'load_user', 'save_user')):
                 label = _localized(ui, MESSAGES, key)
+            if value in ('Saved', 'Empty', 'Unavailable'):
+                value = _localized(ui, MESSAGES, value)
             ui.text(label.upper(), 64, y, scale=3, color=color)
             ui.text(str(value).upper(), 540, y, scale=3, color=color)
         if len(rows) > 7:
@@ -247,6 +291,8 @@ class Runtime:
 
     def help_text(self, ui):
         key = self.menu.rows()[self.menu.index][0]
+        if key == 'apply_preset':
+            key = self.menu.pending[1]
         if self.menu.page == 'root' and key in _core.CONTROLS:
             key = 'stick' if key.endswith('stick') else 'button'
         elif key == 'mode':

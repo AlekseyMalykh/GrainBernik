@@ -304,7 +304,7 @@ class AdvancedTests(unittest.TestCase):
         self.assertEqual(self.menu.rows()[self.menu.index][0], 'back')
         self.menu.handle('B')
         self.menu.handle('B')
-        for _ in range(4): self.menu.handle('DOWN')
+        for _ in range(5): self.menu.handle('DOWN')
         self.menu.handle('A')
         self.assertTrue(self.menu.confirm)
         self.menu.handle('B')
@@ -315,6 +315,117 @@ class AdvancedTests(unittest.TestCase):
         self.assertEqual(self.store.data, core.defaults())
         self.menu.handle('B')
         self.assertIsNone(self.menu.page)
+
+    def preset_action(self, key, confirm=True):
+        self.menu.page = 'presets'
+        self.menu.index = [row[0] for row in self.menu.rows()].index(key)
+        self.menu.handle('A')
+        if confirm and self.menu.confirm:
+            self.menu.handle('DOWN')
+            self.menu.handle('A')
+
+    def test_factory_layouts_are_supported_and_keep_device_calibration(self):
+        self.store.data['left_stick'].update(axis_x=7, axis_y=6, deadzone=23, invert_x=True)
+        current = copy.deepcopy(self.store.data)
+        for name in core.FACTORY_PRESETS:
+            with self.subTest(name=name):
+                data = core.factory_preset(name, current)
+                self.assertTrue(self.controls.supports_preset(data))
+                self.assertTrue(all(data[key]['enabled'] for key in core.CONTROLS))
+                for stick in ('left_stick', 'right_stick'):
+                    for field in ('axis_x', 'axis_y', 'deadzone', 'invert_x', 'invert_y'):
+                        self.assertEqual(data[stick][field], current[stick][field])
+                self.assertEqual(data, core.validate(data))
+
+    def test_legacy_config_migrates_without_changing_assignments(self):
+        self.stick()
+        old = copy.deepcopy(self.store.data)
+        self.path.write_text(json.dumps({'info_language': 'RU', core.CONFIG_KEY: old}))
+        migrated = core.Settings(self.path)
+        self.assertEqual(migrated.data, old)
+        self.assertIsNone(migrated.user_preset)
+        self.assertTrue(migrated.apply_factory('Echo'))
+        self.assertEqual(core.Settings(self.path).user_preset, old)
+        self.assertEqual(json.loads(self.path.read_text())['info_language'], 'RU')
+
+    def test_first_factory_archives_current_once_and_loads_user(self):
+        self.stick(mode='Latch')
+        self.button('r2', effect='ORBIX')
+        initial = copy.deepcopy(self.store.data)
+        self.assertTrue(self.store.apply_factory('Ambient'))
+        self.assertEqual(self.store.user_preset, initial)
+        self.assertTrue(self.store.apply_factory('Tape'))
+        self.assertEqual(self.store.user_preset, initial)
+        self.assertTrue(self.store.load_user())
+        self.assertEqual(self.store.data, initial)
+        self.assertEqual(core.Settings(self.path).data, initial)
+
+    def test_user_snapshot_is_independent_and_preserved_by_reset(self):
+        self.stick()
+        self.assertTrue(self.store.save_user())
+        saved = copy.deepcopy(self.store.data)
+        self.store.data['left_stick']['x'] = 'orbix.rotation'
+        self.assertEqual(self.store.user_preset, saved)
+        self.store.replace_controls(core.defaults())
+        self.assertEqual(core.Settings(self.path).user_preset, saved)
+        self.assertTrue(self.store.load_user())
+        self.assertEqual(self.store.data, saved)
+
+    def test_preset_confirm_cancel_and_overwrite_are_explicit(self):
+        initial = copy.deepcopy(self.store.data)
+        self.preset_action('Granular', confirm=False)
+        self.assertTrue(self.menu.confirm)
+        self.assertEqual(self.store.data, initial)
+        self.assertIsNone(self.store.user_preset)
+        self.assertFalse(self.path.exists())
+        self.menu.handle('B')
+        self.assertFalse(self.menu.confirm)
+        self.preset_action('Granular')
+        self.assertEqual(self.store.user_preset, initial)
+        granular = copy.deepcopy(self.store.data)
+        self.preset_action('save_user', confirm=False)
+        self.menu.handle('B')
+        self.assertEqual(self.store.user_preset, initial)
+        self.preset_action('save_user')
+        self.assertEqual(self.store.user_preset, granular)
+        self.assertEqual(core.Settings(self.path).user_preset, granular)
+        self.assertEqual(self.bus.writes, [])
+
+    def test_empty_and_unsupported_presets_are_not_applied(self):
+        self.preset_action('load_user')
+        self.assertFalse(self.menu.confirm)
+        self.assertFalse(self.path.exists())
+        del self.bus.params['grain.size']
+        self.preset_action('Granular')
+        self.assertFalse(self.menu.confirm)
+        self.assertEqual(self.store.data, core.defaults())
+        self.assertFalse(self.path.exists())
+
+    def test_failed_preset_save_rolls_back_active_and_user_slot(self):
+        self.stick()
+        old = copy.deepcopy(self.store.data)
+        self.store.path = Path(self.temp.name) / 'missing/settings.json'
+        self.assertFalse(self.store.apply_factory('Granular'))
+        self.assertEqual(self.store.data, old)
+        self.assertIsNone(self.store.user_preset)
+        self.assertTrue(self.store.error)
+
+    def test_user_slot_validation_is_flat_and_rejects_invalid_snapshots(self):
+        self.path.write_text(json.dumps({core.CONFIG_KEY: dict(core.defaults(), user_preset={'version': 999})}))
+        self.assertIsNone(core.Settings(self.path).user_preset)
+        snapshot = dict(core.defaults(), user_preset={'ignore': 'nested metadata'})
+        self.path.write_text(json.dumps({core.CONFIG_KEY: dict(core.defaults(), user_preset=snapshot)}))
+        loaded = core.Settings(self.path)
+        self.assertEqual(loaded.user_preset, core.defaults())
+        self.assertNotIn('user_preset', loaded.user_preset)
+
+    def test_applying_preset_releases_active_effect_before_reassignment(self):
+        self.button()
+        self.controls.button('l2', True)
+        self.assertEqual(self.bus.get('delay.mix'), .65)
+        self.preset_action('Granular')
+        self.assertEqual(self.bus.get('delay.mix'), .5)
+        self.assertFalse(self.controls.sources)
 
 
 if __name__ == '__main__':

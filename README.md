@@ -10,9 +10,9 @@ The patch does not modify or redistribute the closed GrainBrick application: you
 
 > Status: beta. Tested on RG40XX H with KNULLI: screen scaling, buttons, USB audio output and USB recording (Zoom H1n as audio interface).
 
-**New: Advanced Settings — working on RG40XX H.** The in-app **Settings → Advanced Settings** menu adds independent Left Stick, Right Stick, L2 and R2 assignments. All four start **OFF**. The owner confirmed successful operation of the initial version on RG40XX H with KNULLI on **2026-11-03**. Automated checks now cover **21 control/configuration tests and 15 integration tests against the official ARM64 application and DSP**. The detailed checklist below remains useful for checking every assignment and longer sessions; the device confirmation is not an exhaustive compatibility report.
+**New: Advanced Settings — working on RG40XX H.** The in-app **Settings → Advanced Settings** menu adds independent Left Stick, Right Stick, L2 and R2 assignments. All four start **OFF**. The owner confirmed successful operation of the initial version on RG40XX H with KNULLI on **2026-11-03**. Automated checks now cover **30 control/configuration tests and 18 integration tests against the official ARM64 application and DSP**. The detailed checklist below remains useful for checking every assignment and longer sessions; the device confirmation is not an exhaustive compatibility report.
 
-**Latest update:** ORBIX assignments (13 XY parameters and a Hold/Toggle button), START playback control and L1/R1 tab switching from every advanced submenu, and contextual/navigation help following **INFO LANGUAGE → EN/RU**. These additions pass automated checks and await a new on-device check.
+**Latest update:** five control presets and one User slot; ORBIX assignments (13 XY parameters and a Hold/Toggle button), START playback control and L1/R1 tab switching from every advanced submenu, and contextual/navigation help following **INFO LANGUAGE → EN/RU**. These additions pass automated checks and await a new on-device check.
 
 ## Install on RG40XX H
 
@@ -49,6 +49,32 @@ Open **SETTINGS**, select **ADVANCED SETTINGS**, then press **A** or **D-pad Rig
 - **Limits:** the current public ParameterBus does not expose Filter Cutoff/Resonance, Tape Speed or Pan. No direct Stutter, Tape Stop or Glitch API was verified, so these are **not offered**. Delay Throw/Reverb Wash are parameter presets, not a new send/return routing system. Original closed application/DSP files remain unmodified.
 
 Detailed behavior, test commands and the on-device checklist: [Advanced Settings](docs/ADVANCED_SETTINGS.md). Set `GRAINBERNIK_ADVANCED=0` to disable this adapter.
+
+### Control presets
+
+Open **Advanced Settings → Presets**. Five built-in layouts configure all four
+controls; **Save Current** and **Load User** manage one independent User slot.
+Applying/loading a layout or replacing User requires confirmation, initially
+focused on Cancel. No preset is applied automatically on upgrade.
+
+| Preset | Left stick X / Y | Right stick X / Y | L2 / R2 | Sensitivity / smoothing |
+|---|---|---|---|---|
+| Granular | Grain Position / Size | Grain Pitch / Density | Freeze / Reverse | 70% / 60 ms |
+| Ambient | Grain Position / Spray | Reverb Mix / Shimmer Amount | Freeze / Reverb Wash | 50% / 180 ms |
+| Echo | Delay Time / Feedback | Delay Mix / Reverb Mix | Delay Throw / Reverb Wash | 50% / 100 ms |
+| Tape | Tape Saturation / Wow | Grain Pitch / Tape Flutter | Pitch Drop / Bypass | 40% / 140 ms |
+| ORBIX Play | ORBIX Rotation / Gravity | ORBIX Bounce / Reverb | ORBIX Toggle / Reverb Wash | 50% / 120 ms |
+
+Factory layouts enable all four controls, use Spring sticks and Hold buttons
+(except ORBIX Toggle), and preserve current axis indices, deadzone and inversion.
+They change control assignments, not the sound parameters or transport. Native
+grain/tape processing still needs enabling when appropriate.
+
+On the first factory application, an empty User slot automatically saves your
+previous setup. Later factory choices never overwrite that slot. Save Current
+explicitly replaces it after confirmation; Load User restores all four controls
+and their options after restart as well. Reset to Defaults keeps the saved User
+slot. A failed preset save leaves both the active setup and User unchanged.
 
 ### USB audio
 
@@ -87,9 +113,16 @@ L2/R2 поддерживают Hold/Toggle и назначения **Freeze, Rev
 
 **Исправлено управление в подменю:** START запускает/останавливает воспроизведение, L1/R1 переключают основные вкладки с сохранением назначений. Подсказки выбранного пункта, кнопок, подтверждения сброса и ошибки сохранения следуют настройке **INFO LANGUAGE: EN/RU**. [Полная русская инструкция](README_RU.md).
 
+**Пресеты управления:** в **Advanced Settings → Presets** доступны Granular,
+Ambient, Echo, Tape и ORBIX Play, а также один пользовательский слот с командами
+«Сохранить текущую» и «Загрузить свою». Замена требует подтверждения.
+Первая готовая раскладка сохраняет предыдущие настройки в пустой User;
+последующие раскладки его не перезаписывают. Калибровка осей сохраняется,
+сброс к стандартным не удаляет User. [Таблица раскладок и подробности](README_RU.md#пресеты-управления).
+
 Настройки автоматически сохраняются в существующий `settings.json`, в раздел `grainbernik_advanced`. Выключение не стирает назначения. Управление действует на вкладках GRAIN/FX/TAPE/VISUAL. При входе в браузер, настройки, сохранение или справку, при потере фокуса, отключении контроллера и выходе временные эффекты снимаются, включая Toggle/Latch. После возвращения нужна новая кнопка или возврат стика в центр.
 
-**Работа первой версии подтверждена владельцем на RG40XX H с KNULLI 3 ноября 2026 года**. Текущая версия проверяется **36 автотестами**: 21 логическим и 15 с настоящим ARM64-приложением и оригинальным DSP. Новые назначения ORBIX, исправления START/L1/R1 и перевод подсказок требуют повторной проверки на консоли. [Подробный сценарий](docs/ADVANCED_SETTINGS.md).
+**Работа первой версии подтверждена владельцем на RG40XX H с KNULLI 3 ноября 2026 года**. Текущая версия проверяется **48 автотестами**: 30 логическими и 18 с настоящим ARM64-приложением и оригинальным DSP. Пресеты, новые назначения ORBIX, исправления START/L1/R1 и перевод подсказок требуют повторной проверки на консоли. [Подробный сценарий](docs/ADVANCED_SETTINGS.md).
 
 Для обновления уже установленного GrainBernik достаточно скопировать **`gb_advanced.py`, `gb_advanced_controls.py` и обновлённый `gb_launch.py`**. Существующие адаптеры звука/кнопок/экрана, USB-скрипты, настройки, сэмплы, проекты и записи сохраняйте. Перед заменой сделайте резервную копию загрузчика и настроек.
 

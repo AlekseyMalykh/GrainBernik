@@ -177,7 +177,7 @@ class NativeIntegration(unittest.TestCase):
     def test_start_stops_and_restarts_from_every_advanced_page(self):
         import copy
         self.tab('SETTINGS')
-        for page in ('root', 'left_stick', 'right_stick', 'left_stick.options',
+        for page in ('root', 'presets', 'left_stick', 'right_stick', 'left_stick.options',
                      'right_stick.options', 'l2', 'r2'):
             with self.subTest(page=page):
                 self.runtime.menu.open()
@@ -203,7 +203,7 @@ class NativeIntegration(unittest.TestCase):
         self.runtime.settings.data['r2'].update(enabled=True, effect='ORBIX', mode='Toggle')
         self.assertTrue(self.runtime.settings.save())
         expected = copy.deepcopy(self.runtime.settings.data)
-        for page in ('root', 'left_stick', 'right_stick', 'left_stick.options',
+        for page in ('root', 'presets', 'left_stick', 'right_stick', 'left_stick.options',
                      'right_stick.options', 'l2', 'r2'):
             for button, tab in ((8, 'VISUAL'), (9, 'SAVE'), (15, 'VISUAL'), (16, 'SAVE')):
                 with self.subTest(page=page, button=button):
@@ -477,6 +477,88 @@ class NativeIntegration(unittest.TestCase):
                     self.assertTrue(np.isfinite(rendered).all())
                 self.button(10, False)
                 self.assertEqual({k: p.value for k, p in self.bus.params.items()}, before)
+
+    def preset_choice(self, key, confirm=True):
+        menu = self.runtime.menu
+        menu.page, menu.confirm = 'presets', False
+        menu.index = [row[0] for row in menu.rows()].index(key)
+        self.tap(5)
+        if confirm and menu.confirm:
+            self.hat((0, -1))
+            self.tap(5)
+
+    def test_factory_presets_via_native_input_keep_audio_calibration_and_archive_user(self):
+        import copy
+        self.tab('SETTINGS')
+        self.runtime.settings.data['left_stick'].update(enabled=True, x='orbix.root', axis_x=3, axis_y=2)
+        self.runtime.settings.save()
+        before = copy.deepcopy(self.runtime.settings.data)
+        audio = {key: p.value for key, p in self.bus.params.items()}
+        self.runtime.menu.open()
+        for _ in range(4): self.hat((0, -1))
+        self.tap(5)
+        self.assertEqual(self.runtime.menu.page, 'presets')
+        for name in self.adapter._core.FACTORY_PRESETS:
+            with self.subTest(preset=name):
+                self.preset_choice(name)
+                self.assertEqual(self.runtime.settings.data,
+                                 self.adapter._core.factory_preset(name, before))
+                self.assertEqual(self.runtime.settings.user_preset, before)
+                self.assertEqual({key: p.value for key, p in self.bus.params.items()}, audio)
+        for language in ('EN', 'RU'):
+            self.ui.set_info_language(language)
+            self.runtime.menu.page, self.runtime.menu.index = 'presets', 6
+            self.snapshot('presets-list-' + language.lower())
+            self.preset_choice('ORBIX Play', confirm=False)
+            self.snapshot('presets-confirm-' + language.lower())
+            self.tap(4)
+        self.assertEqual(self.runtime.settings.user_preset, before)
+
+    def test_user_slot_save_load_overwrite_and_native_settings_merge(self):
+        import copy
+        self.tab('SETTINGS')
+        self.runtime.menu.open()
+        self.preset_choice('Granular')
+        original_slot = copy.deepcopy(self.runtime.settings.user_preset)
+        self.preset_choice('save_user', confirm=False)
+        self.tap(4)
+        self.assertEqual(self.runtime.settings.user_preset, original_slot)
+        self.preset_choice('save_user')
+        user = copy.deepcopy(self.runtime.settings.data)
+        self.preset_choice('Ambient')
+        self.assertNotEqual(self.runtime.settings.data, user)
+        self.preset_choice('load_user')
+        self.assertEqual(self.runtime.settings.data, user)
+        self.ui.toggle_save_params_on_exit()
+        loaded = self.adapter._core.Settings(self.app / 'settings.json')
+        self.assertEqual(loaded.user_preset, user)
+        self.assertEqual(loaded.data, user)
+        self.controller = self.Control(self.bus)
+        self.assertEqual(self.adapter._runtime.settings.user_preset, user)
+        self.assertEqual(self.adapter._runtime.settings.data, user)
+
+    def test_pending_preset_keeps_transport_tabs_and_bilingual_help(self):
+        import copy
+        self.tab('SETTINGS')
+        self.runtime.menu.open()
+        before = copy.deepcopy(self.runtime.settings.data)
+        for action in ('Granular', 'save_user'):
+            self.preset_choice(action, confirm=False)
+            self.bus.set('transport.playing', 1)
+            self.tap(13)
+            self.assertEqual(self.bus.get('transport.playing'), 0)
+            self.assertTrue(self.runtime.menu.confirm)
+            for language in ('EN', 'RU'):
+                self.ui.set_info_language(language)
+                self.snapshot('presets-' + action.lower() + '-' + language.lower())
+            self.tap(9)
+            self.assertEqual(self.controller.current_tab, 'SAVE')
+            self.assertIsNone(self.runtime.menu.page)
+            self.assertIsNone(self.runtime.menu.pending)
+            self.assertEqual(self.runtime.settings.data, before)
+            self.assertIsNone(self.runtime.settings.user_preset)
+            self.tab('SETTINGS')
+            self.runtime.menu.open()
 
 
 if __name__ == '__main__':

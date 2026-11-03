@@ -33,6 +33,7 @@ AXIS_PARAMETERS = (
     ('orbix.instrument', 'ORBIX Instrument'), ('orbix.octave', 'ORBIX Octave'),
     ('orbix.shape', 'ORBIX Shape'),
 )
+AXIS_IDS = frozenset(key for key, label in AXIS_PARAMETERS)
 # These parameters are enumerations/counts in the native ORBIX engine.
 # Smooth the gesture internally, then publish only valid integer selections.
 DISCRETE_PARAMETERS = frozenset(('orbix.balls', 'orbix.root', 'orbix.scale',
@@ -51,6 +52,20 @@ BUTTON_EFFECTS = {
                                      'eq.hmid', 'eq.high', 'eq.air')}},
     'ORBIX': {'orbix.enabled': 1},
 }
+# (left X/Y, right X/Y, L2/R2, sensitivity %, smoothing ms).
+# Presets affect assignments only, never DSP values or transport.
+FACTORY_PRESETS = {
+    'Granular': (('grain.position', 'grain.size'), ('grain.pitch', 'grain.density'),
+                 ('Freeze', 'Reverse'), 70, 60),
+    'Ambient': (('grain.position', 'grain.spray'), ('reverb.mix', 'shimmer.mix'),
+                ('Freeze', 'Reverb Wash'), 50, 180),
+    'Echo': (('delay.time', 'delay.feedback'), ('delay.mix', 'reverb.mix'),
+             ('Delay Throw', 'Reverb Wash'), 50, 100),
+    'Tape': (('tape.saturation', 'tape.wow'), ('grain.pitch', 'tape.flutter'),
+             ('Pitch Drop', 'Bypass'), 40, 140),
+    'ORBIX Play': (('orbix.rotation', 'orbix.gravity'), ('orbix.bounce', 'orbix.reverb'),
+                   ('ORBIX', 'Reverb Wash'), 50, 120),
+}
 
 
 def defaults():
@@ -62,6 +77,21 @@ def defaults():
     return dict(version=VERSION, **sticks,
                 l2=dict(enabled=False, effect=None, mode='Hold'),
                 r2=dict(enabled=False, effect=None, mode='Hold'))
+
+
+def factory_preset(name, current):
+    left, right, buttons, sensitivity, smoothing = FACTORY_PRESETS[name]
+    result = defaults()
+    for key, axes in (('left_stick', left), ('right_stick', right)):
+        result[key].update(enabled=True, x=axes[0], y=axes[1],
+                           sensitivity=sensitivity, smoothing=smoothing)
+        # Device calibration/preferences are not a musical preset.
+        for field in ('axis_x', 'axis_y', 'deadzone', 'invert_x', 'invert_y'):
+            result[key][field] = current[key][field]
+    for key, effect in zip(('l2', 'r2'), buttons):
+        result[key].update(enabled=True, effect=effect,
+                           mode='Toggle' if effect == 'ORBIX' else 'Hold')
+    return result
 
 
 def _number(value, low, high, fallback):
@@ -87,7 +117,7 @@ def validate(raw):
         if name.endswith('stick'):
             for key in ('x', 'y'):
                 v = src.get(key)
-                dst[key] = v if isinstance(v, str) and v in dict(AXIS_PARAMETERS) else None
+                dst[key] = v if isinstance(v, str) and v in AXIS_IDS else None
             for key, lo, hi in (('deadzone', 0, 50), ('sensitivity', 10, 200),
                                 ('smoothing', 0, 500), ('axis_x', 0, 31), ('axis_y', 0, 31)):
                 dst[key] = int(_number(src.get(key), lo, hi, dst[key]))
@@ -107,8 +137,14 @@ class Settings:
         self.path = Path(path)
         self.error = ''
         self.data = defaults()
+        self.user_preset = None
         try:
-            self.data = validate(self._read().get(CONFIG_KEY))
+            raw = self._read().get(CONFIG_KEY)
+            self.data = validate(raw)
+            user = raw.get('user_preset') if isinstance(raw, dict) else None
+            if (isinstance(user, dict) and user.get('version') == VERSION
+                    and all(isinstance(user.get(name), dict) for name in CONTROLS)):
+                self.user_preset = validate(user)
         except (OSError, ValueError, TypeError) as exc:
             self.error = 'Settings read failed: ' + str(exc)
 
@@ -125,7 +161,7 @@ class Settings:
         temp = self.path.with_name(self.path.name + '.advanced.tmp')
         try:
             obj = {**(preserved or {}), **self._read()}
-            obj[CONFIG_KEY] = self.data
+            obj[CONFIG_KEY] = dict(self.data, user_preset=self.user_preset)
             with temp.open('w', encoding='utf-8') as stream:
                 json.dump(obj, stream, ensure_ascii=False, indent=2, allow_nan=False)
                 stream.write('\n')
@@ -141,6 +177,29 @@ class Settings:
             except OSError:
                 pass
             return False
+
+    def replace_controls(self, data, user=None, replace_user=False):
+        """Commit a preset atomically; a failed save keeps both old states."""
+        old_data, old_user = self.data, self.user_preset
+        self.data = validate(data)
+        if replace_user:
+            self.user_preset = validate(user)
+        if self.save():
+            return True
+        self.data, self.user_preset = old_data, old_user
+        return False
+
+    def save_user(self):
+        return self.replace_controls(self.data, self.data, replace_user=True)
+
+    def load_user(self):
+        return self.user_preset is not None and self.replace_controls(self.user_preset)
+
+    def apply_factory(self, name):
+        # The first factory preset archives the existing setup, including a
+        # migrated pre-preset installation, without overwriting a saved slot.
+        return self.replace_controls(factory_preset(name, self.data), self.data,
+                                     replace_user=self.user_preset is None)
 
 
 class Controls:
@@ -172,6 +231,13 @@ class Controls:
     def effect_choices(self):
         return [None] + [name for name, preset in BUTTON_EFFECTS.items()
                          if all(self.bounds(k) for k in preset)]
+
+    def supports_preset(self, data):
+        axes = (data[name][axis] for name in ('left_stick', 'right_stick') for axis in ('x', 'y'))
+        effects = (data[name]['effect'] for name in ('l2', 'r2'))
+        return (all(key is None or key in AXIS_IDS and self.bounds(key) for key in axes)
+                and all(effect is None or effect in BUTTON_EFFECTS
+                        and all(self.bounds(key) for key in BUTTON_EFFECTS[effect]) for effect in effects))
 
     def _external_changes(self):
         for key, previous in self.written.items():
@@ -324,17 +390,32 @@ class Menu:
         self.index = 0
         self.parent_index = 0
         self.confirm = False
+        self.pending = None
+        self.return_index = 0
 
     def open(self):
         self.controls.cancel()
-        self.page, self.index, self.confirm = 'root', 0, False
+        self.page, self.index, self.confirm, self.pending = 'root', 0, False, None
 
     def rows(self):
         if self.confirm:
-            return [('cancel', 'Cancel', ''), ('restore', 'Restore Defaults', '')]
+            key, label = ('restore', 'Restore Defaults') if self.pending is None else {
+                'factory': ('apply_preset', 'Apply Preset'),
+                'save_user': ('save_user', 'Save User'),
+                'load_user': ('load_user', 'Load User'),
+            }[self.pending[0]]
+            return [('cancel', 'Cancel', ''), (key, label, '')]
         if self.page == 'root':
             return [(name, label, 'ON' if self.settings.data[name]['enabled'] else 'OFF')
-                    for name, label in self.LABELS.items()] + [('reset', 'Reset to Defaults', '>'), ('back', 'Back', '')]
+                    for name, label in self.LABELS.items()] + [('presets', 'Presets', '>'),
+                    ('reset', 'Reset to Defaults', '>'), ('back', 'Back', '')]
+        if self.page == 'presets':
+            user_state = ('Empty' if self.settings.user_preset is None else 'Saved'
+                          if self.controls.supports_preset(self.settings.user_preset) else 'Unavailable')
+            return [(name, name, '>' if self.controls.supports_preset(factory_preset(name, self.settings.data))
+                     else 'Unavailable') for name in FACTORY_PRESETS] + [
+                ('load_user', 'Load User', user_state),
+                ('save_user', 'Save User', '>'), ('back', 'Back', '')]
         name = self.page.split('.')[0]
         cfg = self.settings.data[name]
         if self.page.endswith('.options'):
@@ -360,7 +441,9 @@ class Menu:
 
     def back(self):
         if self.confirm:
-            self.confirm, self.index = False, 4
+            self.confirm = False
+            self.index = self.return_index if self.pending is not None else 5
+            self.pending = None
         elif self.page.endswith('.options'):
             self.page, self.index = self.page.split('.')[0], 3
         elif self.page != 'root':
@@ -385,18 +468,34 @@ class Menu:
             if action == 'A':
                 if key == 'restore':
                     self.controls.cancel()
-                    self.settings.data = defaults()
-                    self.settings.save()
-                self.confirm, self.index = False, 4
+                    self.settings.replace_controls(defaults())
+                elif key != 'cancel':
+                    self.controls.cancel()
+                    if self.pending[0] == 'factory':
+                        self.settings.apply_factory(self.pending[1])
+                    elif self.pending[0] == 'save_user':
+                        self.settings.save_user()
+                    else:
+                        self.settings.load_user()
+                self.back()
             return True
         if key == 'back':
             self.back()
         elif self.page == 'root':
             if key == 'reset':
-                self.confirm, self.index = True, 0
+                self.confirm, self.index, self.pending = True, 0, None
             else:
                 self.parent_index = self.index
                 self.page, self.index = key, 0
+        elif self.page == 'presets':
+            if key == 'load_user' and (self.settings.user_preset is None
+                                       or not self.controls.supports_preset(self.settings.user_preset)):
+                return True
+            if key in FACTORY_PRESETS and not self.controls.supports_preset(factory_preset(key, self.settings.data)):
+                return True
+            self.return_index = self.index
+            self.pending = ('factory', key) if key in FACTORY_PRESETS else (key, None)
+            self.confirm, self.index = True, 0
         elif key == 'options':
             self.page, self.index = self.page + '.options', 0
         else:

@@ -6,9 +6,9 @@ existing Settings tab. It requires both `gb_advanced.py` and
 
 **Device status (2026-11-03):** the owner confirmed successful operation on
 RG40XX H with KNULLI after the three-file update was installed on the console's
-card. Current automated validation passes **36 tests** (21 pure tests and 15 tests
-against the official ARM64 application/DSP). ORBIX, transport/tab navigation fixes
-and bilingual advanced help are newer additions awaiting device verification.
+card. Current automated validation passes **48 tests** (30 pure tests and 18 tests
+against the official ARM64 application/DSP). ORBIX, transport/tab navigation fixes,
+control presets and bilingual advanced help are newer additions awaiting device verification.
 The checklist below covers
 additional per-assignment and extended testing; not every item has been
 individually confirmed by the owner.
@@ -31,6 +31,9 @@ SETTINGS
       Enabled / Effect / Mode / Back
     R2 BUTTON
       Enabled / Effect / Mode / Back
+    Presets
+      Granular / Ambient / Echo / Tape / ORBIX Play
+      Load User / Save Current / Back
     Reset to Defaults → Cancel / Restore Defaults
     Back
 ```
@@ -72,6 +75,35 @@ physical stick indices in Stick Options if the console reports another order.
 Each trigger stores `enabled`, `effect` (or null/None) and `mode`
 (Hold/Toggle, default Hold). Disabling keeps the assignment. Active Hold,
 Toggle and Latch states are temporary and are not resumed at startup.
+
+## Control presets and User slot
+
+The Presets submenu offers Granular, Ambient, Echo, Tape and ORBIX Play.
+The [README table](../README.md#control-presets) lists exact assignments,
+sensitivity and smoothing. All factory layouts use Spring, enable all four
+controls, and use Hold except the ORBIX Toggle button. Current physical axis
+indices, deadzone and inversion are preserved. Native audio parameters and
+transport are not reconfigured; no factory layout activates automatically.
+
+Apply, Load User and Save Current open a confirmation focused on Cancel. The
+confirmation names the factory layout. Unsupported factory mappings cannot be
+applied. Cancel or leaving via L1/R1 leaves assignments and the User slot intact;
+START remains available. Preset help and confirmation are translated EN/RU.
+
+`grainbernik_advanced.user_preset` stores either null or a flat, validated
+snapshot of all four controls, including their options and physical axes.
+Existing version-1 configurations without this key keep their active layout
+and start with an empty slot. A first factory application automatically archives
+that layout into an empty User slot; subsequent factory applications preserve
+an occupied slot. Explicit Save Current replaces it after confirmation. Load
+User restores it, including after process restart. Reset to Defaults affects
+active controls only and preserves User. Snapshots are independent copies and
+do not include nested preset metadata or active Hold/Toggle states.
+
+Preset save uses the same atomic configuration write. On failure, both in-memory
+active assignments and User are rolled back, and the previous on-disk file
+remains intact. Native settings changes merge the slot back into settings.json.
+Switching layouts cancels any old transient modulation before reassigning input.
 
 ## XY behavior
 
@@ -187,6 +219,9 @@ rendering each macro through the original `GranularEngine`/`DSPChain`.
 It also verifies ORBIX generating audio from a silent input sample, integer
 musical selections, START from every advanced page, shoulder-button tab changes
 with saved assignments and both help languages with 640×480 render captures.
+Preset checks cover legacy-config migration, all five factory layouts, preserved
+calibration, first-use archive, User save/load/overwrite, cancellation, unsupported
+mappings, save-failure rollback and the native app's settings-save path.
 Without an official module, native tests are explicitly skipped, not counted
 as device verification. The module itself is never copied into this repository.
 
