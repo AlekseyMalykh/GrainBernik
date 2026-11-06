@@ -52,6 +52,7 @@ def _load_adapter(name):
 
 # These adapters address hardware behavior that remains useful on the H.
 _load_adapter('gb_shutdown')
+_load_adapter('gb_recording')
 _load_adapter('gb_buttons')
 _load_adapter('gb_advanced')
 
@@ -60,6 +61,7 @@ _load_adapter('gb_advanced')
 sys.path.insert(0, str(APP))
 _load_adapter('gb_usb_settings')
 _load_adapter('gb_samples')
+_load_adapter('gb_quick_settings')
 sys.path.remove(str(APP))
 
 # 1.0.1 now detects display sizes and USB capture devices itself. Keep its

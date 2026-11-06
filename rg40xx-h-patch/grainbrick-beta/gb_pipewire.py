@@ -56,8 +56,43 @@ def gadget_source():
 
 
 def builtin_sink():
-    return next((n for n in _names('sinks') if n != BOTH and 'gadget' not in n.lower()
-                 and 'uac2' not in n.lower() and n.startswith('alsa_output')), None)
+    """Prefer the H700 on-board ALSA card, never a connected USB recorder."""
+    sinks = [n for n in _names('sinks') if n != BOTH and n.startswith('alsa_output')
+             and not any(word in n.lower() for word in ('gadget', 'uac2'))]
+    # On ROCKNIX the integrated sound card is presented as a platform sink.
+    for name in sinks:
+        if name.startswith('alsa_output.platform-') or name.startswith('alsa_output.platform_'):
+            return name
+    # Some WirePlumber versions name the platform sink differently. USB sinks
+    # MUST NOT be mistaken for the integrated speaker/headphone interface.
+    return next((n for n in sinks if not n.startswith('alsa_output.usb-')
+                 and '.usb-' not in n), None)
+
+
+def restore_builtin_default():
+    """Repair a stale default that points at GrainBernik's USB gadget.
+
+    Does not disturb an intentionally selected Bluetooth, HDMI or external
+    USB device. Existing playback streams may still need to be reopened.
+    """
+    native = builtin_sink()
+    if not native:
+        return False
+    code, output = _run('pactl', 'get-default-sink')
+    if code:
+        code, info = _run('pactl', 'info')
+        if code:
+            return False
+        output = next((line.partition(':')[2].strip() for line in info.splitlines()
+                       if line.startswith('Default Sink:')), '')
+    current = output.strip()
+    if not current:
+        return False
+    if current == native:
+        return True
+    if current == BOTH or any(word in current.lower() for word in ('uac2', 'gadget')):
+        return _run('pactl', 'set-default-sink', native)[0] == 0
+    return False
 
 
 def ensure_both():

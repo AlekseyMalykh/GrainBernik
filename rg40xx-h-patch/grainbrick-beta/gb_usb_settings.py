@@ -28,6 +28,8 @@ class Runtime:
         self.connection, self.device = 'Unknown', 'Not Probed'
         self.owned_output = False
         self.last_output = None
+        # A previous iPhone session may have left PipeWire's default on UAC2.
+        self._restore_pending = True
 
     def tick(self):
         now = time.monotonic()
@@ -67,18 +69,28 @@ class Runtime:
                 enabled = False
         selected = getattr(self.ui, 'audio_output_id', 'internal')
         if enabled:
+            self._restore_pending = True
             if not self.owned_output:
-                # Capture prior output before selecting our temporary UI ID.
+                # "default" may currently resolve to the USB gadget on ROCKNIX.
+                # Preserve explicit external device IDs, but not that alias.
                 if selected != 'grainbernik_usb_gadget':
                     data = copy.deepcopy(cfg)
-                    data['previous_output'] = selected
+                    data['previous_output'] = ('internal' if selected in ('', 'default') else selected)
                     if not self.settings.save(data):
                         return
                 self.owned_output = True
             self.ui.audio_output_id = 'grainbernik_usb_gadget'
-        elif self.owned_output or selected == 'grainbernik_usb_gadget':
-            self.ui.audio_output_id = cfg['previous_output']
-            self.owned_output = False
+        else:
+            if self.owned_output or selected == 'grainbernik_usb_gadget':
+                previous = cfg.get('previous_output', 'internal')
+                self.ui.audio_output_id = ('internal' if previous in
+                    ('', 'default', 'grainbernik_usb_gadget') else previous)
+                self.owned_output = False
+            if self._restore_pending and gb_pipewire.available():
+                # Repair only stale UAC2/gb_both defaults; preserve unrelated
+                # system-selected sinks. Native output ID is handled above.
+                gb_pipewire.restore_builtin_default()
+                self._restore_pending = False
         desired = self.ui.audio_output_id
         if desired != self.last_output:
             self.ui.refresh_audio_outputs()
@@ -86,8 +98,12 @@ class Runtime:
 
     def close(self):
         if self.ui and (self.owned_output or self.ui.audio_output_id == 'grainbernik_usb_gadget'):
-            self.ui.audio_output_id = self.settings.data['previous_output']
+            previous = self.settings.data.get('previous_output', 'internal')
+            self.ui.audio_output_id = ('internal' if previous in
+                ('', 'default', 'grainbernik_usb_gadget') else previous)
             self.owned_output = False
+        if gb_pipewire.available():
+            gb_pipewire.restore_builtin_default()
         self.open = False
 
     # ---------------------------------------------------------------- page
@@ -343,7 +359,9 @@ def _attach():
         # Never persist our transient selection in native settings.json.
         selected = self.audio_output_id
         if selected == 'grainbernik_usb_gadget':
-            self.audio_output_id = _runtime.settings.data['previous_output'] if _runtime else 'internal'
+            previous = _runtime.settings.data.get('previous_output', 'internal') if _runtime else 'internal'
+            self.audio_output_id = ('internal' if previous in
+                ('', 'default', 'grainbernik_usb_gadget') else previous)
         try:
             return old_save(self)
         finally:

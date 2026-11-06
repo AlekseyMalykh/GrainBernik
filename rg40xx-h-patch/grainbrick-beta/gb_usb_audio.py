@@ -220,6 +220,8 @@ def install_engine_hooks(settings_path=None, system=None):
     if getattr(inputs, '_grainbernik_usb', False):
         return True
     old_capture, old_outputs = inputs.available_usb_captures, devices.available_outputs
+    inputs._grainbernik_native_captures = old_capture
+    devices._grainbernik_native_outputs = old_outputs
 
     def captures(*args, **kwargs):
         cfg = Settings(settings_path).data
@@ -239,6 +241,13 @@ def install_engine_hooks(settings_path=None, system=None):
 
     def outputs(*args, **kwargs):
         existing = list(old_outputs(*args, **kwargs))
+        # ROCKNIX's system default may remain on the iPhone gadget after a
+        # disconnect. INTERNAL must address the console, not that stale sink.
+        if gb_pipewire.available():
+            builtin = gb_pipewire.builtin_sink()
+            if builtin:
+                existing = [(key, label, 'pipewire:NODE=' + builtin if key == 'internal' else pcm)
+                            for key, label, pcm in existing]
         cfg = Settings(settings_path).data
         if cfg['mode'] != MODES[2] or not cfg['output'] or not connected(system):
             return existing

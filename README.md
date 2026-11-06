@@ -19,6 +19,10 @@ Highlights:
 The patch does not modify or redistribute the closed GrainBrick application:
 you need the official `grainbrick.beta.1.0.1.zip` from the original author.
 
+**Download:** [GrainBernik v0.2.0-beta.1](https://github.com/AlekseyMalykh/GrainBernik/releases/tag/v0.2.0-beta.1)
+— **patch** ZIP for a fresh install, **update** ZIP for an existing one
+([release notes](docs/releases/v0.2.0-beta.1.md)).
+
 > **Status (2026-11-06):** tested on an RG40XX H with the **official ROCKNIX
 > 20261101 (DDR4 image)** and an **iPhone 16**: playback to headphones + iPhone,
 > recording from the iPhone, monitoring, L3/R3, presets and recording deletion
@@ -28,6 +32,7 @@ you need the official `grainbrick.beta.1.0.1.zip` from the original author.
 ## Contents
 
 - [Install on ROCKNIX (recommended)](#install-on-rocknix-recommended)
+- [Settings menu](#settings-menu)
 - [iPhone / USB audio](#iphone--usb-audio)
 - [Deleting recordings](#deleting-recordings)
 - [Sticks & Buttons](#sticks--buttons)
@@ -63,11 +68,34 @@ you need the official `grainbrick.beta.1.0.1.zip` from the original author.
    appears in **PORTS**. To update later, rebuild the package, copy it and run
    `install.sh` again; your samples, projects and settings stay.
 
-The ROCKNIX launcher runs the CPU in `performance` mode while GrainBrick is open.
+The ROCKNIX launcher runs the CPU in `performance` mode while GrainBrick is open
+and disables the unused pygame mixer (`SDL_AUDIODRIVER=dummy`), which fixes the
+exit hang on **Select + Start**; a stalled audio worker is cleaned up on exit.
+
+**Updating** an existing installation: extract the **update** ZIP, copy
+`grainbrick-beta/*` into `/storage/roms/ports/grainbrick beta 1.0.1/` and
+`rocknix/GrainBrick beta 1.0.1.sh` into `/storage/roms/ports/` (both are
+needed). Settings, samples, projects and recordings are kept.
+
+## Settings menu
+
+**SETTINGS** is reduced to five entries; the native items moved to OTHER:
+
+| Entry | Contents |
+|---|---|
+| **AUDIO** | Quick page: **CONNECTION** (AUTO / IPHONE), **INPUT** (detected USB input), **OUTPUT** |
+| **AUDIO / ADVANCED** | The full IPHONE / USB AUDIO page below, plus PLAYBACK OUTPUT |
+| **CONTROLS** | Presets of Sticks & Buttons (opens the preset list directly) |
+| **CONTROLS / ADVANCED** | Full Sticks & Buttons editor |
+| **OTHER SETTINGS** | Info language, save on exit, button mapping, reset sound |
+
+USB audio devices (e.g. an FM1 or Zoom H1n) are detected when plugged in while
+the app runs. Lists wrap around at both ends. In editors **A** increases and
+**B** decreases a value; on navigation rows **B** goes back.
 
 ## iPhone / USB audio
 
-**SETTINGS → IPHONE / USB AUDIO:**
+**SETTINGS → AUDIO / ADVANCED** (page *IPHONE / USB AUDIO*):
 
 | Item | Meaning |
 |---|---|
@@ -76,6 +104,7 @@ The ROCKNIX launcher runs the CPU in `performance` mode while GrainBrick is open
 | RECORD FROM IPHONE | record the iPhone sound in SAMPLE |
 | MONITOR WHILE RECORDING | hear the iPhone in the headphones while recording |
 | STATUS | `CONNECT IPHONE (USB-C)` / `IPHONE CONNECTED` / `NOT STARTED - PRESS A` |
+| PLAYBACK OUTPUT | GrainBrick's own output selection |
 
 Choosing **IPHONE** starts the USB sound card mode by itself (no SSH needed);
 **OFF** returns the normal ROCKNIX USB mode.
@@ -90,6 +119,10 @@ Choosing **IPHONE** starts the USB sound card mode by itself (no SSH needed);
    recording** turns monitoring on/off; the choice is remembered.
 5. With headphones plugged in, the speaker is muted (ROCKNIX does not do this
    by itself on this console).
+6. After the iPhone is unplugged, GrainBrick's INTERNAL output always returns
+   to the console (a stale system default on the USB card is repaired).
+7. A recording interrupted by unplugging is finalized (WAV header repaired)
+   before the editor opens, so saving it no longer runs out of memory.
 
 iOS shows *"Accessory uses too much power"*: the console charger draws power
 from the iPhone (limited to the 100 mA minimum in this mode). Audio still
@@ -120,7 +153,7 @@ keeps its native INFO function.
 
 ## Sticks & Buttons
 
-**SETTINGS → STICKS & BUTTONS** (formerly Advanced Settings): six independent
+**SETTINGS → CONTROLS / ADVANCED** (formerly Advanced Settings; presets also via **CONTROLS**): six independent
 controls, all **OFF** by default — **Left Stick**, **Right Stick** (X/Y
 parameters), **L2**, **R2**, **L3 Click**, **R3 Click** (effects).
 

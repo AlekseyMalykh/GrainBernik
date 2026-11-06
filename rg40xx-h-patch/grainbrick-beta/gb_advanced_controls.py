@@ -572,9 +572,19 @@ class Menu:
     def handle(self, action):
         if self.page is None:
             return False
-        if action in ('B', 'MENU', 'REBIND_CANCEL', 'TAB_PREV'):
+        # GRAINBERNIK_NAV_FIX_V3_20261106: B decreases editable values, A increases.
+        if action in ('MENU', 'REBIND_CANCEL', 'TAB_PREV'):
             self.back()
             return True
+        if action == 'B':
+            # On navigation rows B still means Back / Cancel.
+            key = self.rows()[self.index][0]
+            if (not self.confirm and self.page not in ('root', 'presets')
+                    and key not in ('back', 'options')):
+                action = 'LEFT'
+            else:
+                self.back()
+                return True
         if action in ('UP', 'DOWN'):
             self.index = (self.index + (1 if action == 'DOWN' else -1)) % len(self.rows())
             return True

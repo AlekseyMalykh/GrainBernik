@@ -30,11 +30,11 @@ MESSAGES = {
     'reset_subtitle': ('RESTORES ONLY THESE SIX CONTROLS', 'СБРОС ТОЛЬКО ШЕСТИ НАЗНАЧЕНИЙ'),
     'reset_title': ('RESTORE DEFAULTS?', 'ВЕРНУТЬ НАСТРОЙКИ ПО УМОЛЧАНИЮ?'),
     'transport': ('START: PLAY/STOP   L1/R1: TABS', 'START: ПУСК/СТОП   L1/R1: ВКЛАДКИ'),
-    'navigation': ('D-PAD: SELECT/CHANGE   A: OPEN/CHANGE   B: BACK',
-                   'КРЕСТОВИНА: ВЫБОР/ПРАВКА   A: ОТКРЫТЬ   B: НАЗАД'),
+    'navigation': ('D-PAD: SELECT   A: +/OPEN   B: -/BACK',
+                   'КРЕСТОВИНА: ВЫБОР   A: +/ОТКРЫТЬ   B: -/НАЗАД'),
     'not_saved': ('NOT SAVED - CHECK SETTINGS FILE / STORAGE', 'НЕ СОХРАНЕНО: ПРОВЕРЬТЕ ФАЙЛ НАСТРОЕК И КАРТУ'),
     'footer_select': ('D-PAD SELECT', 'КРЕСТ: ВЫБОР'),
-    'footer_change': ('A CHANGE / B BACK', 'A ПРАВКА / B НАЗАД'),
+    'footer_change': ('A + / B -', 'A + / B -'),
     'footer_open': ('A OPEN', 'A ОТКРЫТЬ'),
     'entry_title': ('STICKS & BUTTONS', 'СТИКИ И КНОПКИ'),
     'entry_help1': ('ASSIGN STICKS, L2/R2 AND L3/R3 TO SOUND.', 'СТИКИ, L2/R2 И НАЖАТИЯ L3/R3 ДЛЯ ЗВУКА.'),
@@ -526,7 +526,34 @@ def _attach():
     def handle(self, action, value=None):
         if _runtime is not None and _runtime.controller is self and _runtime.handle(action):
             return
+        # GRAINBERNIK_NAV_FIX_V3_20261106: wrap the native SETTINGS list at either end.
+        # Prefer the native handler: only synthesize a wrap if its
+        # own edge navigation did not move the selection.
+        try:
+            params = tuple(self.SETTINGS_PARAMS)
+            wraps = (self.current_tab == 'SETTINGS' and
+                     action in ('UP', 'DOWN') and len(params) > 1 and
+                     not getattr(self, 'button_map_active', False) and
+                     not getattr(getattr(_runtime, 'ui', None),
+                                 'button_map_active', False))
+            before = self.current_param if wraps else None
+        except (AttributeError, TypeError):
+            wraps, before, params = False, None, ()
+
         result = original_handle(self, action, value)
+        if wraps and self.current_tab == 'SETTINGS' and (
+            (action == 'UP' and before == params[0]) or
+            (action == 'DOWN' and before == params[-1])
+        ) and self.current_param == before:
+            # Traverse the list through the existing ControlManager,
+            # without writing engine-private index fields. Stop if the
+            # handler throttles repeated synthetic navigation.
+            opposite = 'DOWN' if action == 'UP' else 'UP'
+            for _ in range(len(params) - 1):
+                previous = self.current_param
+                original_handle(self, opposite, value)
+                if self.current_param == previous:
+                    break
         if _runtime is not None and not _runtime.performance():
             # Tab changes keep Toggle effects; sticks/Hold are released.
             _runtime.controls.release_transient()
