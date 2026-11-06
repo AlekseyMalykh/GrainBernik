@@ -50,7 +50,8 @@ def _load_adapter(name):
     except Exception as exc:
         print('GRAINBERNIK ADAPTER FAILED:', name, repr(exc), flush=True)
 
-# These three adapters address hardware behavior that remains useful on the H.
+# These adapters address hardware behavior that remains useful on the H.
+_load_adapter('gb_shutdown')
 _load_adapter('gb_buttons')
 _load_adapter('gb_advanced')
 

@@ -409,6 +409,7 @@ class EngineHooks(Fixture):
                 self.args = args
 
         with patch.dict(sys.modules, {'engine.audio_inputs': inputs, 'engine.audio_devices': outputs}), \
+                patch.object(audio.gb_pipewire, 'available', return_value=False), \
                 patch.object(subprocess, 'Popen', Process), patch.object(audio, 'guard') as guard:
             self.assertTrue(audio.install_engine_hooks(self.settings.path, self.system))
             self.assertEqual(inputs.available_usb_captures()[0]['pcm'], 'plughw:CARD=UAC2Gadget,DEV=2')

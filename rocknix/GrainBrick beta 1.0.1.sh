@@ -20,6 +20,10 @@ export PYTHONUNBUFFERED=1
 export PYTHONPATH="$PY/site"
 export LD_LIBRARY_PATH="$APP${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-wayland}"
+# GrainBrick renders/captures through aplay/arecord, not pygame.mixer.
+# Initializing an unused PulseAudio mixer can hang Mix_CloseAudio on exit.
+# Keep SDL's mixer on its dummy backend; ALSA/PipeWire audio is unaffected.
+export SDL_AUDIODRIVER=dummy
 # GrainBrick 1.0.1 maps buttons itself through the SDL controller mapping.
 # The old KNULLI calibration layer (gb_buttons) would translate twice: keep it off.
 export GRAINBRICK_BUTTONS="${GRAINBRICK_BUTTONS:-0}"
