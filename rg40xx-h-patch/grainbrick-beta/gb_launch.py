@@ -44,6 +44,7 @@ def _load_adapter(name):
     try:
         spec = importlib.util.spec_from_file_location(name, path)
         mod = importlib.util.module_from_spec(spec)
+        sys.modules[name] = mod
         spec.loader.exec_module(mod)
         mod.install()
     except Exception as exc:
@@ -52,6 +53,13 @@ def _load_adapter(name):
 # These three adapters address hardware behavior that remains useful on the H.
 _load_adapter('gb_buttons')
 _load_adapter('gb_advanced')
+
+# Optional gadget routing/settings; default Disabled, no ConfigFS writes.
+# Its imports use sibling modules and must also work before main is loaded.
+sys.path.insert(0, str(APP))
+_load_adapter('gb_usb_settings')
+_load_adapter('gb_samples')
+sys.path.remove(str(APP))
 
 # 1.0.1 now detects display sizes and USB capture devices itself. Keep its
 # native implementations by default; allow the older adapters as opt-ins.

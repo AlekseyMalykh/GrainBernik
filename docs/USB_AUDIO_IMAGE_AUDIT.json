@@ -1,0 +1,62 @@
+{
+  "scope": "local firmware image only; installed device not inspected",
+  "image": "knulli-h700-rg40xx-h-scarab-20260511.img",
+  "partitions": [
+    {
+      "name": "boot",
+      "first_lba": 73728,
+      "last_lba": 116735
+    },
+    {
+      "name": "env",
+      "first_lba": 116736,
+      "last_lba": 149503
+    },
+    {
+      "name": "boot-resource",
+      "first_lba": 149504,
+      "last_lba": 10635263
+    },
+    {
+      "name": "userdata",
+      "first_lba": 10635264,
+      "last_lba": 11683839
+    }
+  ],
+  "kernel_version": "Linux version 4.9.170 (flower@flower-B85M-D2V) (gcc version 5.3.1 20160412 (Linaro GCC 5.3-2016.05) ) #13 SMP PREEMPT Thu Dec 25 12:15:52 CST 2025",
+  "kernel_sha256": "0be2ed7b8c9c96a4a682ebff3237635f80f75f41ac336e4eacee1a3107941d81",
+  "embedded_config_sha256": "565948300ae2d0f68a8ec85a18be033cde06ad4c46a988bebf708b9ce35cb119",
+  "flags": {
+    "USB_GADGET": "y",
+    "CONFIGFS_FS": "y",
+    "USB_LIBCOMPOSITE": "y",
+    "USB_CONFIGFS": "y",
+    "USB_CONFIGFS_F_UAC1": "n",
+    "USB_CONFIGFS_F_UAC2": "n",
+    "USB_F_UAC2": "unknown",
+    "USB_CONFIGFS_F_AUDIO_SRC": "y",
+    "SND_USB_AUDIO": "y",
+    "SND_ALOOP": "n",
+    "USB_SUNXI_UDC0": "y"
+  },
+  "separately_shipped_module": {
+    "name": "usb_f_uac2.ko",
+    "sha256": "80b2832a7a9ef2298b9395b149619e5e4b2960d289b14b670eb3bffc97a05b69",
+    "modinfo": [
+      "alias=usbfunc:uac2",
+      "srcversion=79066A9835814B9709C2AF7",
+      "depends=libcomposite",
+      "vermagic=4.9.170 SMP preempt mod_unload modversions aarch64"
+    ],
+    "required_attributes_found": [
+      "c_chmask",
+      "p_chmask",
+      "c_srate",
+      "p_srate",
+      "c_ssize",
+      "p_ssize"
+    ],
+    "loadability": "unknown until tested on the running kernel",
+    "note": "Embedded configuration can disagree with separately shipped modules."
+  }
+}

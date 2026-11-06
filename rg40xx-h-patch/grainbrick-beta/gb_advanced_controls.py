@@ -4,6 +4,7 @@ GrainBrick beta 1.0 exposes ParameterBus.params/get/set. Parameter bounds come
 from the running engine, never from guessed DSP ranges. Sources compose in a
 stable order: left stick, right stick, L2, R2. Releasing one source preserves
 the others and restores the underlying parameter when its last owner leaves.
+L3/R3 (stick clicks) are separate button controls like L2/R2.
 """
 import json
 import math
@@ -12,7 +13,10 @@ from pathlib import Path
 
 CONFIG_KEY = 'grainbernik_advanced'
 VERSION = 1
-CONTROLS = ('left_stick', 'right_stick', 'l2', 'r2')
+CONTROLS = ('left_stick', 'right_stick', 'l2', 'r2', 'l3', 'r3')
+BUTTONS = ('l2', 'r2', 'l3', 'r3')
+# Controls that existed before L3/R3; older User slots contain only these.
+LEGACY_CONTROLS = ('left_stick', 'right_stick', 'l2', 'r2')
 AXIS_PARAMETERS = (
     ('grain.position', 'Grain Position'), ('grain.size', 'Grain Size'),
     ('grain.density', 'Grain Density'), ('grain.pitch', 'Grain Pitch'),
@@ -38,35 +42,83 @@ AXIS_IDS = frozenset(key for key, label in AXIS_PARAMETERS)
 # Smooth the gesture internally, then publish only valid integer selections.
 DISCRETE_PARAMETERS = frozenset(('orbix.balls', 'orbix.root', 'orbix.scale',
                                   'orbix.instrument', 'orbix.octave', 'orbix.shape'))
+class Offset:
+    """Relative change added to the current value instead of replacing it."""
+    __slots__ = ('delta',)
+
+    def __init__(self, delta):
+        self.delta = float(delta)
+
+    def __repr__(self):
+        return 'Offset(%+g)' % self.delta
+
+
+class Step:
+    """One-shot persistent change per press (like a manual edit), never restored."""
+    __slots__ = ('delta',)
+
+    def __init__(self, delta):
+        self.delta = float(delta)
+
+    def __repr__(self):
+        return 'Step(%+g)' % self.delta
+
+
+class Set:
+    """One-shot persistent assignment per press (used with Step effects)."""
+    __slots__ = ('value',)
+
+    def __init__(self, value):
+        self.value = float(value)
+
+    def __repr__(self):
+        return 'Set(%g)' % self.value
+
+
 # These are reversible presets of existing engine parameters, not new DSP.
+# Absolute values: the most recently activated button wins. Offset values are
+# relative and add up (Octave Up + Pitch Drop = no change).
 # Freeze is the native Motion Hold fragment texture, not a spectral freeze.
 BUTTON_EFFECTS = {
     'Freeze': {'grain.enabled': 1, 'motion.enabled': 1, 'motion.hold': 1},
     'Reverse': {'motion.enabled': 1, 'motion.reverse': 1},
     'Delay Throw': {'delay.mix': .65, 'delay.feedback': .6},
     'Reverb Wash': {'reverb.mix': .85, 'reverb.size': .95, 'reverb.decay': 12},
-    'Pitch Drop': {'grain.enabled': 1, 'grain.pitch': -12},
+    'Pitch Drop': {'grain.enabled': 1, 'grain.pitch': Offset(-12)},
     'Bypass': {'delay.mix': 0, 'reverb.mix': 0, 'shimmer.mix': 0,
                'tape.enabled': 0, 'comp.enabled': 0,
                **{key: 0 for key in ('eq.low', 'eq.lmid', 'eq.mid',
                                      'eq.hmid', 'eq.high', 'eq.air')}},
     'ORBIX': {'orbix.enabled': 1},
+    'Octave Up': {'grain.enabled': 1, 'grain.pitch': Offset(12)},
+    'Shimmer Burst': {'shimmer.mix': .8, 'shimmer.feedback': .7},
+    'Grain Burst': {'grain.enabled': 1, 'grain.density': 32, 'grain.spray': .6},
+    'Lo-Fi': {'tape.enabled': 1, 'tape.bit8': 1},
+    'Stutter': {'motion.enabled': 1, 'motion.jump': 1, 'motion.chaos': 1},
+    # Step actions: every press transposes by one octave and stays there.
+    'Octave +': {'grain.enabled': Set(1), 'grain.pitch': Step(12)},
+    'Octave -': {'grain.enabled': Set(1), 'grain.pitch': Step(-12)},
 }
-# (left X/Y, right X/Y, L2/R2, sensitivity %, smoothing ms).
+STEP_EFFECTS = frozenset(name for name, preset in BUTTON_EFFECTS.items()
+                         if any(isinstance(v, (Step, Set)) for v in preset.values()))
+# (left X/Y, right X/Y, (L2, R2, L3, R3), sensitivity %, smoothing ms).
 # Presets affect assignments only, never DSP values or transport.
+# L2/R2 are Hold (press-and-hold gestures); L3/R3 are Toggle because a stick
+# click is awkward to keep pressed while moving the same stick.
 FACTORY_PRESETS = {
     'Granular': (('grain.position', 'grain.size'), ('grain.pitch', 'grain.density'),
-                 ('Freeze', 'Reverse'), 70, 60),
+                 ('Freeze', 'Reverse', 'Octave -', 'Octave +'), 70, 60),
     'Ambient': (('grain.position', 'grain.spray'), ('reverb.mix', 'shimmer.mix'),
-                ('Freeze', 'Reverb Wash'), 50, 180),
+                ('Freeze', 'Reverb Wash', 'Shimmer Burst', 'Bypass'), 50, 180),
+    'Texture': (('grain.size', 'grain.spray'), ('grain.density', 'roam.speed'),
+                ('Grain Burst', 'Freeze', 'Reverse', 'Stutter'), 60, 90),
     'Echo': (('delay.time', 'delay.feedback'), ('delay.mix', 'reverb.mix'),
-             ('Delay Throw', 'Reverb Wash'), 50, 100),
+             ('Delay Throw', 'Reverb Wash', 'Freeze', 'Bypass'), 50, 100),
     'Tape': (('tape.saturation', 'tape.wow'), ('grain.pitch', 'tape.flutter'),
-             ('Pitch Drop', 'Bypass'), 40, 140),
+             ('Pitch Drop', 'Lo-Fi', 'Reverse', 'Bypass'), 40, 140),
     'ORBIX Play': (('orbix.rotation', 'orbix.gravity'), ('orbix.bounce', 'orbix.reverb'),
-                   ('ORBIX', 'Reverb Wash'), 50, 120),
+                   ('ORBIX', 'Reverb Wash', 'Freeze', 'Shimmer Burst'), 50, 120),
 }
-
 
 def defaults():
     sticks = {}
@@ -76,7 +128,9 @@ def defaults():
                             mode='Spring', smoothing=60, axis_x=axes[0], axis_y=axes[1])
     return dict(version=VERSION, **sticks,
                 l2=dict(enabled=False, effect=None, mode='Hold'),
-                r2=dict(enabled=False, effect=None, mode='Hold'))
+                r2=dict(enabled=False, effect=None, mode='Hold'),
+                l3=dict(enabled=False, effect=None, mode='Toggle'),
+                r3=dict(enabled=False, effect=None, mode='Toggle'))
 
 
 def factory_preset(name, current):
@@ -88,9 +142,9 @@ def factory_preset(name, current):
         # Device calibration/preferences are not a musical preset.
         for field in ('axis_x', 'axis_y', 'deadzone', 'invert_x', 'invert_y'):
             result[key][field] = current[key][field]
-    for key, effect in zip(('l2', 'r2'), buttons):
-        result[key].update(enabled=True, effect=effect,
-                           mode='Toggle' if effect == 'ORBIX' else 'Hold')
+    for key, effect in zip(BUTTONS, buttons):
+        result[key].update(enabled=effect is not None, effect=effect,
+                           mode='Toggle' if effect == 'ORBIX' or key in ('l3', 'r3') else 'Hold')
     return result
 
 
@@ -143,7 +197,7 @@ class Settings:
             self.data = validate(raw)
             user = raw.get('user_preset') if isinstance(raw, dict) else None
             if (isinstance(user, dict) and user.get('version') == VERSION
-                    and all(isinstance(user.get(name), dict) for name in CONTROLS)):
+                    and all(isinstance(user.get(name), dict) for name in LEGACY_CONTROLS)):
                 self.user_preset = validate(user)
         except (OSError, ValueError, TypeError) as exc:
             self.error = 'Settings read failed: ' + str(exc)
@@ -212,6 +266,9 @@ class Controls:
         self.gestures = {}
         self.pressed = set()
         self.toggled = set()
+        self.activated = {}  # button control -> activation sequence number
+        self.sequence = 0
+        self.offsets = {}    # parameter -> total relative change applied now
         self.blocked = set()
         self.center_required = set()
         self.last_time = None
@@ -234,7 +291,7 @@ class Controls:
 
     def supports_preset(self, data):
         axes = (data[name][axis] for name in ('left_stick', 'right_stick') for axis in ('x', 'y'))
-        effects = (data[name]['effect'] for name in ('l2', 'r2'))
+        effects = (data[name]['effect'] for name in BUTTONS)
         return (all(key is None or key in AXIS_IDS and self.bounds(key) for key in axes)
                 and all(effect is None or effect in BUTTON_EFFECTS
                         and all(self.bounds(key) for key in BUTTON_EFFECTS[effect]) for effect in effects))
@@ -245,23 +302,39 @@ class Controls:
             if abs(value - previous) > 1e-8:
                 self.base[key] = value
 
+    def _ordered_sources(self):
+        # Sticks first (continuous), then buttons in activation order so the
+        # most recently pressed effect wins a conflict on the same parameter.
+        sticks = [name + '.' + axis for name in CONTROLS if name.endswith('stick') for axis in ('x', 'y')]
+        buttons = sorted((name for name in BUTTONS if name in self.sources),
+                         key=lambda name: self.activated.get(name, 0))
+        return sticks + buttons
+
     def _apply(self):
-        combined = {}
-        for name in CONTROLS:
-            for source in (name + '.x', name + '.y', name):
-                combined.update(self.sources.get(source, {}))
-        for key in combined:
+        combined, offsets = {}, {}
+        for source in self._ordered_sources():
+            for key, value in self.sources.get(source, {}).items():
+                if isinstance(value, Offset):
+                    offsets[key] = offsets.get(key, 0.0) + value.delta
+                else:
+                    combined[key] = value
+        touched = set(combined) | set(offsets)
+        for key in touched:
             self.base.setdefault(key, self.bus.get(key))
-        for key in set(self.written) | set(combined):
-            target = combined.get(key, self.base.get(key, self.bus.get(key)))
+        self.offsets = offsets
+        for key in set(self.written) | touched:
+            if key in touched:
+                target = combined.get(key, self.base[key]) + offsets.get(key, 0.0)
+            else:
+                target = self.base.get(key, self.bus.get(key))
             bounds = self.bounds(key)
             if bounds:
                 target = max(bounds[0], min(bounds[1], target))
-            if key in DISCRETE_PARAMETERS and key in combined:
+            if key in DISCRETE_PARAMETERS and key in touched:
                 target = float(round(target))
             if abs(self.bus.get(key) - target) > 1e-8:
                 self.bus.set(key, target)
-            if key in combined:
+            if key in touched:
                 self.written[key] = self.bus.get(key)
             else:
                 self.written.pop(key, None)
@@ -286,6 +359,25 @@ class Controls:
                 self.center_required.add(control)
         self._apply()
 
+    def release_transient(self):
+        """Leaving the sound tabs: release sticks and Hold buttons.
+
+        Toggle effects stay on across tab changes until toggled off, the
+        Advanced Settings menu opens, or the app exits (full cancel()).
+        """
+        self._external_changes()
+        for control in CONTROLS:
+            if control in self.toggled:
+                continue
+            for source in (control, control + '.x', control + '.y'):
+                self.sources.pop(source, None)
+                self.gestures.pop(source, None)
+            if control in self.pressed:
+                self.blocked.add(control)
+            if control.endswith('stick'):
+                self.center_required.add(control)
+        self._apply()
+
     def button(self, name, down, performance=True):
         cfg = self.settings.data[name]
         if not down:
@@ -304,13 +396,35 @@ class Controls:
         if cfg['effect'] not in self.effect_choices():
             return
         self._external_changes()
+        if cfg['effect'] in STEP_EFFECTS:
+            self._step(BUTTON_EFFECTS[cfg['effect']])
+            return
         if cfg['mode'] == 'Toggle' and name in self.toggled:
             self.toggled.remove(name)
             self.sources.pop(name, None)
         elif cfg['effect'] is not None:
             self.sources[name] = dict(BUTTON_EFFECTS[cfg['effect']])
+            self.sequence += 1
+            self.activated[name] = self.sequence
             if cfg['mode'] == 'Toggle':
                 self.toggled.add(name)
+        self._apply()
+
+    def _step(self, preset):
+        """Apply a persistent edit; an active override keeps working on top."""
+        for key, change in preset.items():
+            bounds = self.bounds(key)
+            if key in self.written:
+                current = self.base[key]
+            else:
+                current = self.bus.get(key)
+            value = change.value if isinstance(change, Set) else current + change.delta
+            if bounds:
+                value = max(bounds[0], min(bounds[1], value))
+            if key in self.written:
+                self.base[key] = value
+            elif abs(self.bus.get(key) - value) > 1e-8:
+                self.bus.set(key, value)
         self._apply()
 
     def tick(self, axes, now, performance=True, excluded_axes=()):
@@ -318,7 +432,7 @@ class Controls:
         dt = 1 / 60 if self.last_time is None else max(0, min(.1, now - self.last_time))
         self.last_time = now
         if not performance:
-            self.cancel()
+            self.release_transient()
             return
         for name in CONTROLS:
             cfg = self.settings.data[name]
@@ -358,7 +472,9 @@ class Controls:
                 if state is None:
                     if not magnitude:
                         continue
-                    current = self.bus.get(key)
+                    # Start from the value without relative button effects so
+                    # an active Octave Up/Pitch Drop is not applied twice.
+                    current = self.bus.get(key) - self.offsets.get(key, 0.0)
                     state = self.gestures[source] = dict(base=current, value=current, active=False)
                 if magnitude:
                     if not state['active'] and cfg['mode'] == 'Latch':
@@ -382,7 +498,8 @@ class Controls:
 
 class Menu:
     """Physical-button navigation model; renderer uses the same row data."""
-    LABELS = dict(left_stick='Left Stick', right_stick='Right Stick', l2='L2 Button', r2='R2 Button')
+    LABELS = dict(left_stick='Left Stick', right_stick='Right Stick', l2='L2 Button', r2='R2 Button',
+                  l3='L3 Click', r3='R3 Click')
 
     def __init__(self, settings, controls):
         self.settings, self.controls = settings, controls
@@ -436,13 +553,14 @@ class Menu:
             effect = cfg['effect'] or 'None'
             if cfg['effect'] not in self.controls.effect_choices():
                 effect = 'Unavailable'
-            result += [('effect', 'Effect', effect), ('mode', 'Mode', cfg['mode'])]
+            mode = 'Step' if cfg['effect'] in STEP_EFFECTS else cfg['mode']
+            result += [('effect', 'Effect', effect), ('mode', 'Mode', mode)]
         return result + [('back', 'Back', '')]
 
     def back(self):
         if self.confirm:
             self.confirm = False
-            self.index = self.return_index if self.pending is not None else 5
+            self.index = self.return_index if self.pending is not None else len(self.LABELS) + 1
             self.pending = None
         elif self.page.endswith('.options'):
             self.page, self.index = self.page.split('.')[0], 3

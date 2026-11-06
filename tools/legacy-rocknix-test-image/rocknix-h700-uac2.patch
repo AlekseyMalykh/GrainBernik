@@ -1,0 +1,12 @@
+diff --git a/projects/ROCKNIX/devices/H700/linux/linux.aarch64.conf b/projects/ROCKNIX/devices/H700/linux/linux.aarch64.conf
+--- a/projects/ROCKNIX/devices/H700/linux/linux.aarch64.conf
++++ b/projects/ROCKNIX/devices/H700/linux/linux.aarch64.conf
+@@ -5607,7 +5607,7 @@ CONFIG_USB_CONFIGFS_MASS_STORAGE=y
+ CONFIG_USB_CONFIGFS_F_FS=y
+ # CONFIG_USB_CONFIGFS_F_UAC1 is not set
+ # CONFIG_USB_CONFIGFS_F_UAC1_LEGACY is not set
+-# CONFIG_USB_CONFIGFS_F_UAC2 is not set
++CONFIG_USB_CONFIGFS_F_UAC2=y
+ # CONFIG_USB_CONFIGFS_F_MIDI is not set
+ # CONFIG_USB_CONFIGFS_F_MIDI2 is not set
+ # CONFIG_USB_CONFIGFS_F_HID is not set

@@ -1,0 +1,12 @@
+[Unit]
+Description=GrainBernik USB audio mode on the H700 test image
+Requires=sys-kernel-config.mount
+After=sys-kernel-config.mount
+ConditionPathExists=/storage/roms/ports/grainbrick beta 1.0.1/gb_usb_audio.py
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -B /usr/lib/grainbrick/gb_usb_service.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10

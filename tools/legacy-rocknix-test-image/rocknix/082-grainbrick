@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+seed=/usr/share/grainbrick-seed
+ports=/storage/roms/ports
+mkdir -p "$ports"
+if [ ! -d "$ports/grainbrick beta 1.0.1" ]; then
+    cp -a "$seed/grainbrick beta 1.0.1" "$ports/"
+fi
+for script in 'GrainBrick beta 1.0.1.sh' 'GrainBernik USB Audio Diagnostics.sh'; do
+    if [ ! -e "$ports/$script" ]; then cp -a "$seed/$script" "$ports/$script"; fi
+done
+systemctl start grainbrick-usb-audio.service

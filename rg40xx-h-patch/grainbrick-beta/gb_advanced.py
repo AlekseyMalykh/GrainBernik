@@ -8,6 +8,7 @@ binary is edited. Unsupported module layouts leave the original app running.
 import atexit
 import importlib.util
 import os
+import re
 from pathlib import Path
 import sys
 import time
@@ -26,7 +27,7 @@ _runtime = None
 # Like the native app, keep parameter names stable and localize its help text.
 MESSAGES = {
     'subtitle': ('INDEPENDENT PERFORMANCE CONTROLS', 'НЕЗАВИСИМОЕ УПРАВЛЕНИЕ ЗВУКОМ'),
-    'reset_subtitle': ('RESTORES ONLY THESE FOUR CONTROLS', 'СБРОС ТОЛЬКО ЧЕТЫРЁХ НАЗНАЧЕНИЙ'),
+    'reset_subtitle': ('RESTORES ONLY THESE SIX CONTROLS', 'СБРОС ТОЛЬКО ШЕСТИ НАЗНАЧЕНИЙ'),
     'reset_title': ('RESTORE DEFAULTS?', 'ВЕРНУТЬ НАСТРОЙКИ ПО УМОЛЧАНИЮ?'),
     'transport': ('START: PLAY/STOP   L1/R1: TABS', 'START: ПУСК/СТОП   L1/R1: ВКЛАДКИ'),
     'navigation': ('D-PAD: SELECT/CHANGE   A: OPEN/CHANGE   B: BACK',
@@ -35,8 +36,8 @@ MESSAGES = {
     'footer_select': ('D-PAD SELECT', 'КРЕСТ: ВЫБОР'),
     'footer_change': ('A CHANGE / B BACK', 'A ПРАВКА / B НАЗАД'),
     'footer_open': ('A OPEN', 'A ОТКРЫТЬ'),
-    'entry_title': ('ADVANCED SETTINGS', 'РАСШИРЕННЫЕ НАСТРОЙКИ'),
-    'entry_help1': ('ASSIGN STICKS AND L2/R2 TO SOUND PARAMETERS.', 'НАЗНАЧЕНИЯ СТИКОВ И L2/R2 ДЛЯ УПРАВЛЕНИЯ ЗВУКОМ.'),
+    'entry_title': ('STICKS & BUTTONS', 'СТИКИ И КНОПКИ'),
+    'entry_help1': ('ASSIGN STICKS, L2/R2 AND L3/R3 TO SOUND.', 'СТИКИ, L2/R2 И НАЖАТИЯ L3/R3 ДЛЯ ЗВУКА.'),
     'entry_help2': ('EACH CONTROL CAN BE ENABLED SEPARATELY.', 'КАЖДЫЙ ОРГАН ВКЛЮЧАЕТСЯ НЕЗАВИСИМО.'),
     'cancel': ('Cancel', 'Отмена'),
     'restore': ('Restore Defaults', 'Вернуть по умолчанию'),
@@ -47,7 +48,7 @@ MESSAGES = {
     'preset_subtitle': ('CONTROL ASSIGNMENTS ONLY; SOUND IS UNCHANGED', 'ТОЛЬКО НАЗНАЧЕНИЯ; ЗВУК НЕ МЕНЯЕТСЯ'),
     'archive_subtitle': ('CURRENT SETUP WILL BE SAVED TO EMPTY USER SLOT', 'ТЕКУЩАЯ РАСКЛАДКА СОХРАНИТСЯ В ПУСТОЙ USER'),
     'save_user_subtitle': ('REPLACES THE SAVED USER SLOT', 'ЗАМЕНЯЕТ СОХРАНЁННЫЙ ПОЛЬЗОВАТЕЛЬСКИЙ СЛОТ'),
-    'save_current_subtitle': ('SAVES ALL FOUR CONTROLS AND THEIR OPTIONS', 'СОХРАНИТЬ ЧЕТЫРЕ ОРГАНА И ИХ ПАРАМЕТРЫ'),
+    'save_current_subtitle': ('SAVES ALL SIX CONTROLS AND THEIR OPTIONS', 'СОХРАНИТЬ ШЕСТЬ ОРГАНОВ И ИХ ПАРАМЕТРЫ'),
     'apply_preset': ('Apply Preset', 'Применить пресет'),
     'save_user': ('Save Current', 'Сохранить текущую'),
     'load_user': ('Load User', 'Загрузить свою'),
@@ -58,8 +59,10 @@ MESSAGES = {
 HELP = {
     'stick': ('Assign independent X/Y parameters to this stick. OFF keeps its assignments and native input.',
               'Назначьте параметры X/Y этому стику. OFF сохраняет назначения и штатное управление.'),
-    'button': ('Assign one effect to this button with Hold or Toggle. The other three controls stay independent.',
-               'Назначьте эффект кнопке с Hold или Toggle. Остальные три органа настраиваются независимо.'),
+    'button': ('Assign one effect to this button with Hold or Toggle. The other controls stay independent.',
+               'Назначьте эффект кнопке с Hold или Toggle. Остальные органы настраиваются независимо.'),
+    'click': ('Stick click (press the stick in). Toggle is recommended: click on, click again off.',
+              'Нажатие на стик. Рекомендуется Toggle: нажали — включено, ещё раз — выключено.'),
     'enabled': ('Enable only this control. Switching OFF releases its effect and keeps the selected assignments.',
                 'Включает только этот орган. OFF снимает его эффект и сохраняет выбранные назначения.'),
     'x': ('Horizontal movement controls the selected parameter. None leaves this axis unassigned.',
@@ -102,29 +105,47 @@ HELP = {
               'Включает ORBIX в Hold/Toggle. START управляет воспроизведением. Прежнее состояние возвращается.'),
     'None': ('No extra effect or input capture. Enable the control and select an assignment to use it.',
              'Без дополнительного эффекта и перехвата ввода. Для работы включите орган и выберите назначение.'),
-    'reset': ('Requires confirmation. Reset these four assignments only; keep native sound and app settings.',
-              'Требует подтверждения. Сброс только четырёх назначений; звук и штатные настройки сохраняются.'),
+    'reset': ('Requires confirmation. Reset these six assignments only; keep native sound and app settings.',
+              'Требует подтверждения. Сброс только шести назначений; звук и штатные настройки сохраняются.'),
     'back': ('Return one menu level. Assignments are already saved. L1/R1 changes main tabs.',
              'Назад на один уровень. Назначения уже сохранены. L1/R1 переключают основные вкладки.'),
     'cancel': ('Keep current assignments and cancel this operation.', 'Сохранить текущие назначения и отменить операцию.'),
-    'restore': ('Turn all four controls OFF and restore their default assignments and options.',
-                'Выключить четыре органа и вернуть их назначения и параметры по умолчанию.'),
-    'presets': ('Five factory layouts and one User slot. Changes require confirmation; saved User is preserved.',
-                'Пять готовых раскладок и слот User. Выбор пресета не перезаписывает занятый User.'),
-    'Granular': ('L: Position/Size; R: Pitch/Density. L2 Freeze, R2 Reverse. Spring, 70% sensitivity.',
-                 'Слева Position/Size; справа Pitch/Density. L2 Freeze, R2 Reverse. Spring, чувствительность 70%.'),
-    'Ambient': ('L: Position/Spray; R: Reverb/Shimmer. L2 Freeze, R2 Reverb Wash. Gentle 180 ms response.',
-                'Слева Position/Spray; справа Reverb/Shimmer. L2 Freeze, R2 Reverb Wash. Плавный отклик 180 мс.'),
-    'Echo': ('L: Delay Time/Feedback; R: Delay/Reverb Mix. L2 Delay Throw, R2 Reverb Wash.',
-             'Слева Delay Time/Feedback; справа Delay/Reverb Mix. L2 Delay Throw, R2 Reverb Wash.'),
-    'Tape': ('L: Saturation/Wow; R: Pitch/Flutter. L2 Pitch Drop, R2 Bypass. Sensitivity 40%.',
-             'Слева Saturation/Wow; справа Pitch/Flutter. L2 Pitch Drop, R2 Bypass. Чувствительность 40%.'),
-    'ORBIX Play': ('L: Rotation/Gravity; R: Bounce/Reverb. L2 ORBIX Toggle, R2 Reverb Wash. START plays/stops.',
-                   'Слева Rotation/Gravity; справа Bounce/Reverb. L2 ORBIX Toggle, R2 Reverb Wash. START: пуск/стоп.'),
-    'load_user': ('Load your saved four-control setup. Empty slot cannot be loaded. Changes need confirmation.',
-                  'Загрузить свою раскладку четырёх органов. Пустой слот недоступен. Нужны подтверждение и A.'),
-    'save_user': ('Save all four current assignments and options into User. Confirm before replacing the saved slot.',
-                  'Сохранить четыре текущих назначения и параметры в User. Замена слота требует подтверждения.'),
+    'restore': ('Turn all six controls OFF and restore their default assignments and options.',
+                'Выключить шесть органов и вернуть их назначения и параметры по умолчанию.'),
+    'presets': ('Six factory layouts and one User slot. Changes require confirmation; saved User is preserved.',
+                'Шесть готовых раскладок и слот User. Выбор пресета не перезаписывает занятый User.'),
+    'Granular': ('L Pos/Size, R Pitch/Density. L2 Freeze, R2 Reverse, L3 Octave -, R3 Octave + (steps).',
+                 'L Pos/Size, R Pitch/Density. L2 Freeze, R2 Reverse, L3 октава вниз, R3 октава вверх.'),
+    'Ambient': ('L Pos/Spray, R Reverb/Shimmer. L2 Freeze, R2 Reverb Wash, L3 Shimmer Burst, R3 Bypass.',
+                'L Pos/Spray, R Reverb/Shimmer. L2 Freeze, R2 Reverb Wash, L3 Shimmer, R3 Bypass.'),
+    'Texture': ('L Size/Spray, R Density/Roam. L2 Grain Burst, R2 Freeze, L3 Reverse, R3 Stutter.',
+                'L Size/Spray, R Density/Roam. L2 Grain Burst, R2 Freeze, L3 Reverse, R3 Stutter.'),
+    'Echo': ('L Time/Feedback, R Delay/Reverb Mix. L2 Delay Throw, R2 Reverb Wash, L3 Freeze, R3 Bypass.',
+             'L Time/Feedback, R Delay/Reverb Mix. L2 Delay Throw, R2 Reverb Wash, L3 Freeze, R3 Bypass.'),
+    'Tape': ('L Saturation/Wow, R Pitch/Flutter. L2 Pitch Drop, R2 Lo-Fi, L3 Reverse, R3 Bypass.',
+             'L Saturation/Wow, R Pitch/Flutter. L2 Pitch Drop, R2 Lo-Fi, L3 Reverse, R3 Bypass.'),
+    'ORBIX Play': ('L Rotation/Gravity, R Bounce/Reverb. L2 ORBIX, R2 Reverb Wash, L3 Freeze, R3 Shimmer.',
+                   'L Rotation/Gravity, R Bounce/Reverb. L2 ORBIX, R2 Reverb Wash, L3 Freeze, R3 Shimmer.'),
+    'Octave Up': ('Enables grain processing and raises pitch by one octave. Restores the previous sound afterward.',
+                  'Включает гранулятор и повышает высоту на октаву. Затем возвращает прежнее звучание.'),
+    'Shimmer Burst': ('Temporarily raises shimmer mix and feedback for a bright halo. Restores both afterward.',
+                      'Временно усиливает shimmer mix и feedback — яркий ореол. Затем возвращает значения.'),
+    'Grain Burst': ('Temporarily raises grain density and spray for a dense cloud. Restores both afterward.',
+                    'Временно увеличивает плотность и разброс зёрен — плотное облако. Затем возвращает значения.'),
+    'Lo-Fi': ('Enables tape and 8-bit mode for a crunchy sound. Restores the previous state afterward.',
+              'Включает tape и 8-бит для грязного звука. Затем возвращает прежнее состояние.'),
+    'Octave +': ('Each press transposes grain pitch one octave up and keeps it. Limited to the pitch range.',
+                 'Каждое нажатие поднимает высоту зёрен на октаву и оставляет её. В пределах диапазона.'),
+    'Octave -': ('Each press transposes grain pitch one octave down and keeps it. Limited to the pitch range.',
+                 'Каждое нажатие опускает высоту зёрен на октаву и оставляет её. В пределах диапазона.'),
+    'Step': ('Step action: every press changes the value once; nothing is restored on release.',
+             'Шаговое действие: каждое нажатие меняет значение один раз; при отпускании не возвращается.'),
+    'Stutter': ('Native Motion jump and chaos make the playback position skip. Restores afterward.',
+                'Штатные Motion jump и chaos заставляют позицию прыгать. Затем значения возвращаются.'),
+    'load_user': ('Load your saved control setup. Empty slot cannot be loaded. Changes need confirmation.',
+                  'Загрузить свою раскладку органов. Пустой слот недоступен. Нужны подтверждение и A.'),
+    'save_user': ('Save all current assignments and options into User. Confirm before replacing the saved slot.',
+                  'Сохранить все текущие назначения и параметры в User. Замена слота требует подтверждения.'),
 }
 
 
@@ -167,12 +188,67 @@ class Runtime:
         self.claimed_buttons = set()
         self.focused = True
         self.excluded_axes = set()
+        self._buttons = None
         try:
             import json
             data = json.loads((APP / 'gb_buttons.json').read_text(encoding='utf-8'))
             self.excluded_axes = {int(x) for x in data.get('trigger_axes', {}).values()}
         except (OSError, ValueError, TypeError):
             pass
+
+    def button_names(self):
+        """Event button number -> control name for L2/R2/L3/R3.
+
+        GrainBrick 1.0.1 reads raw SDL joystick numbers and maps them with the
+        system SDL controller mapping (KNULLI and ROCKNIX both provide one).
+        If the optional gb_buttons adapter translates raw numbers to TrimUI
+        Brick numbers, the same physical buttons arrive under those numbers.
+        """
+        if self._buttons is not None:
+            return self._buttons
+        raw = _sdl_raw_buttons()
+        tr = sys.modules.get('gb_buttons')
+        result = {}
+        if getattr(tr, 'ACTIVE', False):
+            table = {int(k): int(v) for k, v in (tr.DATA or {}).get('buttons', {}).items()}
+            fallback = {'l2': 10, 'r2': 11}
+            for name in _core.BUTTONS:
+                number = raw.get(name)
+                number = table.get(number, 100 + number) if number is not None else fallback.get(name)
+                if number is not None:
+                    result[number] = name
+        else:
+            result = {number: name for name, number in raw.items()}
+        if not result:
+            result = {10: 'l2', 11: 'r2'}
+        self._buttons = result
+        _log('button numbers: ' + ', '.join('%s=%d' % (n, b) for b, n in sorted(result.items())))
+        return result
+
+    def claims(self, name):
+        """True while a pressed L2/R2/L3/R3 belongs to Advanced Settings.
+
+        L3/R3 are taken on every screen whenever their control is ON (even
+        without an effect) so stick clicks never switch tabs; their effect only
+        plays on sound tabs. L2/R2 are taken only on sound tabs with an effect.
+        The native button-rebinding overlay always receives raw buttons.
+        """
+        cfg = self.settings.data.get(name)
+        if not cfg or not cfg['enabled']:
+            return False
+        if name in ('l3', 'r3'):
+            return not (getattr(self.ui, 'button_map_active', False)
+                        or getattr(self.input, 'capture_mode', False))
+        return (self.performance() and cfg['effect'] is not None
+                and cfg['effect'] in self.controls.effect_choices())
+
+    def held_names(self):
+        names = self.button_names()
+        return {names[b] for b in self.claimed_buttons if b in names}
+
+    def masked_button(self, number):
+        name = self.button_names().get(number)
+        return name is not None and (number in self.claimed_buttons or self.claims(name))
 
     def performance(self):
         ui = self.ui
@@ -191,24 +267,29 @@ class Runtime:
                 self.focused = False
             elif kind == getattr(pygame, 'WINDOWFOCUSLOST', -2):
                 self.focused = False
-                self.controls.cancel()
+                self.controls.release_transient()
             elif kind == getattr(pygame, 'WINDOWFOCUSGAINED', -3):
                 self.focused = True
-            if kind in (pygame.JOYBUTTONDOWN, pygame.JOYBUTTONUP) and event.button in (10, 11):
+            name = (self.button_names().get(event.button)
+                    if kind in (pygame.JOYBUTTONDOWN, pygame.JOYBUTTONUP) else None)
+            if name is not None:
                 button = event.button
-                name = 'l2' if button == 10 else 'r2'
                 down = kind == pygame.JOYBUTTONDOWN
                 # Do not steal buttons from the app's own rebinding overlay.
-                eligible = (self.performance() and self.settings.data[name]['enabled']
-                            and self.settings.data[name]['effect'] in self.controls.effect_choices()
-                            and self.settings.data[name]['effect'] is not None)
+                eligible = self.claims(name)
                 if down and eligible:
                     self.claimed_buttons.add(button)
-                    self.controls.button(name, True)
+                    self.controls.button(name, True, self.performance())
                     continue
                 if not down and button in self.claimed_buttons:
                     self.claimed_buttons.discard(button)
                     self.controls.button(name, False, self.performance())
+                    continue
+            # GrainBrick may also read the same buttons as SDL GameController
+            # events (stick clicks = TAB-/TAB+). Hide those while we own them.
+            if kind in (getattr(pygame, 'CONTROLLERBUTTONDOWN', -4), getattr(pygame, 'CONTROLLERBUTTONUP', -5)):
+                name = _CONTROLLER_BUTTONS.get(getattr(event, 'button', None))
+                if name is not None and (self.claims(name) or name in self.held_names()):
                     continue
             # Sticks have no native GrainBrick binding. Leave disabled and
             # unassigned axes untouched, including calibrated analog triggers.
@@ -225,6 +306,14 @@ class Runtime:
     def tick(self, input_manager):
         self.input = input_manager
         axes = {}
+        # Hide owned buttons from GrainBrick's direct button polling too.
+        for attr in (('joy', 'joystick', 'controller') if os.environ.get('GRAINBERNIK_MASK_POLL', '1') != '0' else ()):
+            obj = getattr(input_manager, attr, None)
+            if obj is not None and not isinstance(obj, _MaskedInput):
+                try:
+                    setattr(input_manager, attr, _MaskedInput(obj, self, attr == 'controller'))
+                except (AttributeError, TypeError):
+                    pass
         joy = input_manager.joy
         try:
             if self.performance() and any(self.settings.data[n]['enabled']
@@ -239,7 +328,7 @@ class Runtime:
             if action in ('L', 'R', 'TAB_PREV', 'TAB_NEXT'):
                 # Assignments are saved on edit. Leave the overlay before
                 # switching the native tab so it cannot keep capturing input.
-                self.controls.cancel()
+                self.controls.release_transient()
                 self.menu.page, self.menu.confirm, self.menu.pending = None, False, None
                 self.controller.change_tab(-1 if action in ('L', 'TAB_PREV') else 1)
                 return True
@@ -261,7 +350,7 @@ class Runtime:
         screen = ui.screen
         pygame.draw.rect(screen, ui.BG, (0, 88, ui.WIDTH, ui.HEIGHT - 132))
         page = self.menu.page
-        title = ('ADVANCED SETTINGS' if page == 'root' else _localized(ui, MESSAGES, 'presets').upper()
+        title = ('STICKS & BUTTONS' if page == 'root' else _localized(ui, MESSAGES, 'presets').upper()
                  if page == 'presets' else self.menu.LABELS[page.split('.')[0]].upper())
         subtitle = 'subtitle'
         if self.menu.confirm:
@@ -321,14 +410,91 @@ class Runtime:
         if key == 'apply_preset':
             key = self.menu.pending[1]
         if self.menu.page == 'root' and key in _core.CONTROLS:
-            key = 'stick' if key.endswith('stick') else 'button'
+            key = 'stick' if key.endswith('stick') else 'click' if key in ('l3', 'r3') else 'button'
         elif key == 'mode':
-            key = self.settings.data[self.menu.page.split('.')[0]]['mode']
+            cfg = self.settings.data[self.menu.page.split('.')[0]]
+            key = 'Step' if cfg['effect'] in _core.STEP_EFFECTS else cfg['mode']
         elif key in ('axis_x', 'axis_y'):
             key = 'physical_axis'
         elif key == 'effect':
             key = self.settings.data[self.menu.page]['effect'] or 'None'
         return _localized(ui, HELP, key if key in HELP else 'None')
+
+
+# pygame._sdl2 controller button ids (SDL_GameControllerButton).
+_CONTROLLER_BUTTONS = {7: 'l3', 8: 'r3'}
+_CONTROLLER_IDS = {name: number for number, name in _CONTROLLER_BUTTONS.items()}
+
+
+class _MaskedInput:
+    """Transparent proxy that reports owned L2/R2/L3/R3 buttons as released."""
+    def __init__(self, target, runtime, controller=False):
+        object.__setattr__(self, '_target', target)
+        object.__setattr__(self, '_runtime', runtime)
+        object.__setattr__(self, '_controller', controller)
+
+    def get_button(self, number, *args):
+        rt = self._runtime
+        if self._controller:
+            name = _CONTROLLER_BUTTONS.get(number)
+            if name is not None and (rt.claims(name) or name in rt.held_names()):
+                return False
+        elif rt.masked_button(number):
+            return False
+        return self._target.get_button(number, *args)
+
+    def __getattr__(self, name):
+        return getattr(self._target, name)
+
+    def __setattr__(self, name, value):
+        setattr(self._target, name, value)
+
+    def __eq__(self, other):
+        return self._target == (other._target if isinstance(other, _MaskedInput) else other)
+
+    def __hash__(self):
+        return hash(self._target)
+
+
+_SDL_FIELDS = dict(l2='lefttrigger', r2='righttrigger', l3='leftstick', r3='rightstick')
+
+
+def _sdl_raw_buttons():
+    """Raw SDL button numbers of L2/R2/L3/R3 for joystick 0 from the SDL mapping."""
+    try:
+        if not pygame.joystick.get_init():
+            pygame.joystick.init()
+        if pygame.joystick.get_count() == 0:
+            return {}
+        joy = pygame.joystick.Joystick(0)
+        guid, name = joy.get_guid(), joy.get_name()
+    except pygame.error:
+        return {}
+    text = os.environ.get('SDL_GAMECONTROLLERCONFIG', '')
+    path = os.environ.get('SDL_GAMECONTROLLERCONFIG_FILE')
+    if path:
+        try:
+            text += '\n' + Path(path).read_text(encoding='utf-8', errors='replace')
+        except OSError:
+            pass
+    best = None
+    for line in text.splitlines():
+        parts = line.strip().split(',')
+        if len(parts) < 3 or parts[0].startswith('#'):
+            continue
+        if parts[0] == guid:
+            best = parts
+            break
+        if best is None and parts[1] == name:
+            best = parts
+    result = {}
+    for part in best or ():
+        key, _, value = part.partition(':')
+        match = re.fullmatch(r'b(\d+)', value)
+        for control, field in _SDL_FIELDS.items():
+            if key == field and match:
+                result[control] = int(match.group(1))
+    return result
 
 
 def _attach():
@@ -362,7 +528,8 @@ def _attach():
             return
         result = original_handle(self, action, value)
         if _runtime is not None and not _runtime.performance():
-            _runtime.controls.cancel()
+            # Tab changes keep Toggle effects; sticks/Hold are released.
+            _runtime.controls.release_transient()
         return result
 
     def ui_init(self, *args, **kwargs):
@@ -385,7 +552,7 @@ def _attach():
             self.text(_localized(self, MESSAGES, 'entry_help1'), 54, 196, scale=3, color=self.WHITE)
             self.text(_localized(self, MESSAGES, 'entry_help2'), 54, 232, scale=3, color=self.WHITE)
             self.text('>', 34, 678, scale=3, color=color)
-        self.text('ADVANCED SETTINGS', 64, 678, scale=3, color=color)
+        self.text('STICKS & BUTTONS', 64, 678, scale=3, color=color)
         self.text('>', 480, 678, scale=3, color=color)
 
     def save_settings(self):

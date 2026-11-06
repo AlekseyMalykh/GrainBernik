@@ -24,6 +24,10 @@ import pygame
 APP = Path(__file__).resolve().parent
 MAP_FILE = APP / 'gb_buttons.json'
 VERSION = 1
+# Set by install(): True while raw device buttons are translated to Brick
+# numbers. gb_advanced uses this to find L2/R2/L3/R3 in the event stream.
+ACTIVE = False
+DATA = None
 
 # Raw button numbers GrainBrick uses on the TrimUI Brick
 # (engine/button_mapping.py DEFAULT_BINDINGS / PHYSICAL_LABELS).
@@ -256,6 +260,7 @@ def _load():
 
 
 def install():
+    global ACTIVE, DATA
     if os.environ.get('GRAINBRICK_BUTTONS', '1') == '0':
         _log('disabled')
         return
@@ -282,6 +287,7 @@ def install():
         return res[0] if res else pygame.event.Event(pygame.NOEVENT)
 
     ev_mod.get, ev_mod.poll, ev_mod.wait = get, poll, wait
+    ACTIVE, DATA = True, data
     _log('installed for %s: %d buttons, %d d-pad buttons, %d trigger axes' % (
         data.get('device', '?'), len(tr.buttons), len(tr.dpad), len(tr.axes)))
 

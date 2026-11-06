@@ -74,6 +74,8 @@ class AdvancedTests(unittest.TestCase):
         self.stick('right_stick')
         self.button()
         self.button('r2', effect='Reverb Wash')
+        self.button('l3', effect='Freeze', mode='Toggle')
+        self.button('r3', effect='Bypass', mode='Toggle')
         original = copy.deepcopy(self.store.data)
         for name in core.CONTROLS:
             with self.subTest(name=name):
@@ -282,6 +284,8 @@ class AdvancedTests(unittest.TestCase):
         self.stick(mode='Latch')
         self.controls.button('l2', True)
         self.controls.tick({0: 1, 1: 0}, 0)
+        self.menu.open()
+        self.menu.page = None
         self.controls.tick({}, .1, performance=False)
         self.assertEqual(self.bus.get('delay.mix'), .5)
         self.assertEqual(self.bus.get('grain.position'), .5)
@@ -292,6 +296,24 @@ class AdvancedTests(unittest.TestCase):
         self.controls.tick({0: 0, 1: 0}, .3)
         self.controls.tick({0: 1, 1: 0}, .4)
         self.assertEqual(self.bus.get('grain.position'), 1)
+
+    def test_tab_change_keeps_toggle_and_releases_latch_and_hold(self):
+        self.button(mode='Toggle')
+        self.button('r2', effect='Reverb Wash', mode='Hold')
+        self.stick(mode='Latch')
+        reverb_before = self.bus.get('reverb.mix')
+        self.controls.button('l2', True); self.controls.button('l2', False)
+        self.controls.button('r2', True)
+        self.assertAlmostEqual(self.bus.get('reverb.mix'), .85)
+        self.controls.tick({0: 1, 1: 0}, 0)
+        self.controls.tick({}, .1, performance=False)
+        self.assertAlmostEqual(self.bus.get('delay.mix'), .65)
+        self.assertEqual(self.bus.get('reverb.mix'), reverb_before)
+        self.assertEqual(self.bus.get('grain.position'), .5)
+        self.controls.tick({0: 0, 1: 0}, .2)
+        self.assertAlmostEqual(self.bus.get('delay.mix'), .65)
+        self.controls.button('l2', True); self.controls.button('l2', False)
+        self.assertEqual(self.bus.get('delay.mix'), .5)
 
     def test_reset_confirmation_and_options_scroll_navigation(self):
         self.stick()
@@ -304,7 +326,8 @@ class AdvancedTests(unittest.TestCase):
         self.assertEqual(self.menu.rows()[self.menu.index][0], 'back')
         self.menu.handle('B')
         self.menu.handle('B')
-        for _ in range(5): self.menu.handle('DOWN')
+        for _ in range(len(core.Menu.LABELS) + 1): self.menu.handle('DOWN')
+        self.assertEqual(self.menu.rows()[self.menu.index][0], 'reset')
         self.menu.handle('A')
         self.assertTrue(self.menu.confirm)
         self.menu.handle('B')
@@ -315,6 +338,91 @@ class AdvancedTests(unittest.TestCase):
         self.assertEqual(self.store.data, core.defaults())
         self.menu.handle('B')
         self.assertIsNone(self.menu.page)
+
+    def test_stick_clicks_are_independent_toggle_controls(self):
+        defaults = core.defaults()
+        self.assertEqual((defaults['l3']['mode'], defaults['r3']['mode']), ('Toggle', 'Toggle'))
+        self.button('l3', effect='Delay Throw', mode='Toggle')
+        before = self.bus.get('delay.mix')
+        self.controls.button('l3', True)
+        self.controls.button('l3', False)
+        self.assertAlmostEqual(self.bus.get('delay.mix'), .65)
+        self.controls.button('l3', True)
+        self.controls.button('l3', False)
+        self.assertAlmostEqual(self.bus.get('delay.mix'), before)
+
+    def test_octave_effects_are_relative_and_cancel(self):
+        self.bus.params['grain.pitch'].value = 12
+        self.button('l3', effect='Pitch Drop', mode='Toggle')
+        self.button('r3', effect='Octave Up', mode='Toggle')
+        self.controls.button('r3', True); self.controls.button('r3', False)
+        self.assertEqual(self.bus.get('grain.pitch'), 24)
+        self.controls.button('l3', True); self.controls.button('l3', False)
+        self.assertEqual(self.bus.get('grain.pitch'), 12)
+        self.controls.button('r3', True); self.controls.button('r3', False)
+        self.assertEqual(self.bus.get('grain.pitch'), 0)
+        self.controls.button('l3', True); self.controls.button('l3', False)
+        self.assertEqual(self.bus.get('grain.pitch'), 12)
+
+    def test_octave_steps_follow_each_press_and_survive_tab_changes(self):
+        self.button('l3', effect='Octave -', mode='Toggle')
+        self.button('r3', effect='Octave +', mode='Toggle')
+        def press(name):
+            self.controls.button(name, True); self.controls.button(name, False)
+        seen = []
+        for name in ('r3', 'l3', 'r3', 'r3', 'r3'):
+            press(name)
+            seen.append(self.bus.get('grain.pitch'))
+            self.controls.tick({}, len(seen), performance=False)  # tab change
+            self.assertEqual(self.bus.get('grain.pitch'), seen[-1])
+        self.assertEqual(seen, [12, 0, 12, 24, 24])
+        self.assertEqual(self.bus.get('grain.enabled'), 1)
+        self.controls.cancel()
+        self.assertEqual(self.bus.get('grain.pitch'), 24)
+
+    def test_octave_step_under_temporary_pitch_drop(self):
+        self.button('l2', effect='Pitch Drop', mode='Hold')
+        self.button('r3', effect='Octave +')
+        self.controls.button('l2', True)
+        self.assertEqual(self.bus.get('grain.pitch'), -12)
+        self.controls.button('r3', True); self.controls.button('r3', False)
+        self.assertEqual(self.bus.get('grain.pitch'), 0)
+        self.controls.button('l2', False)
+        self.assertEqual(self.bus.get('grain.pitch'), 12)
+
+    def test_latest_absolute_effect_wins(self):
+        self.button('l3', effect='Delay Throw', mode='Toggle')
+        self.button('r3', effect='Bypass', mode='Toggle')
+        self.controls.button('r3', True); self.controls.button('r3', False)
+        self.controls.button('l3', True); self.controls.button('l3', False)
+        self.assertAlmostEqual(self.bus.get('delay.mix'), .65)
+        self.controls.button('l3', True); self.controls.button('l3', False)
+        self.assertEqual(self.bus.get('delay.mix'), 0)
+
+    def test_stick_gesture_does_not_double_relative_offset(self):
+        self.store.data['right_stick'].update(enabled=True, x='grain.pitch', smoothing=0, sensitivity=100)
+        self.button('r3', effect='Octave Up', mode='Toggle')
+        self.controls.button('r3', True); self.controls.button('r3', False)
+        self.assertEqual(self.bus.get('grain.pitch'), 12)
+        self.controls.tick({2: .5, 3: 0}, 0)
+        self.controls.tick({2: 0, 3: 0}, .1)
+        self.assertEqual(self.bus.get('grain.pitch'), 12)
+
+    def test_factory_presets_use_all_six_controls(self):
+        for name in core.FACTORY_PRESETS:
+            data = core.factory_preset(name, core.defaults())
+            with self.subTest(name=name):
+                for key in core.BUTTONS:
+                    self.assertTrue(data[key]['enabled'])
+                    self.assertIn(data[key]['effect'], core.BUTTON_EFFECTS)
+                self.assertEqual((data['l3']['mode'], data['r3']['mode']), ('Toggle', 'Toggle'))
+
+    def test_old_user_slot_without_stick_clicks_is_kept(self):
+        legacy = {key: core.defaults()[key] for key in core.LEGACY_CONTROLS}
+        legacy['l2'] = dict(enabled=True, effect='Freeze', mode='Hold')
+        restored = core.validate(dict(version=core.VERSION, **legacy))
+        self.assertEqual(restored['l2']['effect'], 'Freeze')
+        self.assertEqual(restored['l3'], core.defaults()['l3'])
 
     def preset_action(self, key, confirm=True):
         self.menu.page = 'presets'

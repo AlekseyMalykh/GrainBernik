@@ -1,0 +1,125 @@
+{
+  "date": "2026-11-05",
+  "base_commit": "c91e9df7705f9a424606ac7405767150c780b35a",
+  "suites": [
+    {
+      "file": "tests/test_usb_audio.py",
+      "passed": 44,
+      "environment": "Linux filesystem/ALSA fixtures; Python 3.12"
+    },
+    {
+      "file": "tests/test_advanced_controls.py",
+      "passed": 30,
+      "environment": "Python 3.12"
+    },
+    {
+      "file": "tests/test_usb_native.py",
+      "passed": 10,
+      "environment": "official 1.0.1 ARM64 + portable Python 3.12.3 + ROCKNIX userspace libraries under qemu; mock ALSA"
+    },
+    {
+      "file": "tests/test_native_advanced.py",
+      "passed": 18,
+      "environment": "official 1.0.1 ARM64 + portable Python 3.12.3 + ROCKNIX userspace libraries under qemu; mock ALSA"
+    },
+    {
+      "file": "tests/test_rocknix_usb_service.py",
+      "passed": 10,
+      "environment": "Linux filesystem fixtures; mode activation/restore and foreign USB ownership"
+    }
+  ],
+  "unique_tests_passed_across_environments": 112,
+  "windows_discovery": {
+    "discovered": 99,
+    "passed": 70,
+    "skipped": 29,
+    "reason": "28 optional native tests and 1 symlink permission test; all covered on Linux/ARM emulation",
+    "date": "2026-11-04",
+    "scope": "Earlier 99-test snapshot; new mainline-specific cases checked on Linux"
+  },
+  "native_application_flow": {
+    "native_record_flow": true,
+    "playback_progress_during_capture": 10,
+    "capture": {
+      "samples": 432000,
+      "peak": 0.030517578125,
+      "rms_dbfs": -30.30899869919436,
+      "non_silent": true
+    },
+    "alsa": "mocked subprocess tools; no real USB endpoints",
+    "iphone_verified": false,
+    "children_stopped": true
+  },
+  "read_only_diag_on_developer_host": "valid JSON; missing UDC and kernel config reported as unknown",
+  "shell_syntax": "both new scripts passed sh -n; LF line endings",
+  "physical_rg40xx_h_audio_verified": false,
+  "iphone_audio_verified": false,
+  "official_main_sha256": "bcef28522efb789105ac5126612e97692374d1a5eff65b58a9a1876650b8f2a8",
+  "physical_stock_kernel_probe": {
+    "release": "4.9.170",
+    "uac2_module_loaded": true,
+    "bind_result": "kernel oops: no second ISO endpoint in stock Sunxi UDC",
+    "stock_adb_restored_after_reboot": true,
+    "known_crash_guard_installed": true
+  },
+  "rocknix_test_image": {
+    "kernel": "7.1.2-gb-uac2",
+    "kernel_sha256": "a7ca00f30b9464b6b450c9b241a070537133c22a223b8f1242ebd7780116bc93",
+    "image_sha256": "d8b307f389b5145748cd9633c86da6b215a0e0010b557550358eb7fb4140f7fb",
+    "matching_modules_rebuilt": true,
+    "offline_image_verified": true,
+    "preserved_101_user_files_verified": 23,
+    "hardware_boot_verified": false,
+    "physical_audio_verified": false,
+    "iphone_verified": false,
+    "card_write_verified": true,
+    "old_backup_gpt_cleared": true,
+    "card_safely_ejected": true,
+    "reader_note": "Initial readback failed with shifted data; reader reset, aligned native write and full uncached readback subsequently matched the image.",
+    "initial_ddr4_hardware_boot_result": "black screen, green power LED; no successful boot confirmed",
+    "ddr3_boot_repair": {
+      "date": "2026-11-05",
+      "reader": "Realtek PCIE Card Reader",
+      "verified": true,
+      "bootloader_sha256": "4fa9d47914c82674d88d70140e62d0d9af559ace0b12c9884efc547d8d89ab1c",
+      "voltage_microvolts": 1200000,
+      "dtb_overlay_symbols_enabled": true,
+      "overlay_applied_offline_to_both_dtbs": true,
+      "kernel_sha256_reverified": true,
+      "bootloader_uncached_readback_verified": true,
+      "boot_files_readback_verified": true,
+      "hardware_boot_verified": false
+    },
+    "initial_card_readback_sha256": "d8b307f389b5145748cd9633c86da6b215a0e0010b557550358eb7fb4140f7fb",
+    "card_write_verified_scope": "Initial DDR4 full-image write; subsequent DDR3 boot-only repair verified separately. Current whole-card image hash has not been measured.",
+    "hardware_boot_result": "DDR4: black screen with green LED. DDR3 boot-only repair: no green LED on power; neither reached a confirmed usable system.",
+    "actual_dram_type_confirmed": false,
+    "experiment_status": "Stopped after unsuccessful hardware boot attempts. Original KNULLI and all 2524 saved files restored and verified; awaiting console boot.",
+    "mainline_boot_repair_dram_tested": "LPDDR3",
+    "active_system": "Original KNULLI restored from backup"
+  },
+  "recovery": {
+    "original_backup_verified": true,
+    "restoring_original_knulli": false,
+    "restoration_verified": true,
+    "original_gpt_verified": true,
+    "verified_files": {
+      "SHARE": 2511,
+      "KNULLI": 13
+    },
+    "prefix_sha256": "9ae69fdc2616b28c123873487ea3df266062622cf5fd7083361e213ec76d8046",
+    "tail_sha256": "1649caec14df36e2a646f6703f1a9681631886576cdc22994f6fb08652390192",
+    "volumes_safely_dismounted": true,
+    "hardware_boot_verified": true,
+    "hardware_boot_confirmation": "User confirmed that restored KNULLI boots on 2026-11-05."
+  },
+  "cleanup": {
+    "date": "2026-11-05",
+    "items_sent_to_recycle_bin": 16,
+    "size_gib": 17.32,
+    "full_card_backup_preserved": true,
+    "repository_preserved": true,
+    "original_grainbrick_archive_preserved": true,
+    "compressed_knulli_installer_preserved": true
+  }
+}
