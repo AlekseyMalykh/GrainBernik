@@ -52,6 +52,10 @@ chmod +x /storage/uac2/*.sh
 
 echo "=== PipeWire: remove the old rule that hid the USB Audio card"
 rm -f /storage/.config/wireplumber/wireplumber.conf.d/90-grainbernik-uac2.conf /run/udev/rules.d/90-grainbernik-uac2.rules
+echo "=== PipeWire: pin internal H616 speaker as the audio graph driver"
+WP_DIR=/storage/.config/wireplumber/wireplumber.conf.d
+mkdir -p "$WP_DIR"
+cp "$HERE/wireplumber/99-grainbrick-driver.conf" "$WP_DIR/99-grainbrick-driver.conf"
 systemctl restart wireplumber 2>/dev/null || true
 
 echo "=== 4/4 Import check (without opening the window)"

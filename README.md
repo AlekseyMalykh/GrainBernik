@@ -29,6 +29,30 @@ you need the official `grainbrick.beta.1.0.1.zip` from the original author.
 > work. KNULLI keeps working as before, but its kernel cannot run the USB sound
 > card mode (see [Why ROCKNIX](#why-rocknix-for-iphone)).
 
+
+## ROCKNIX playback freeze fix (v0.2.1-beta.1)
+
+On RG40XX H with an iPhone connected over UAC2, **Play could light up while the
+playback position and sound stopped** after about 6–8 seconds of iPhone audio
+inactivity. Recording and monitoring continued to work. Diagnostics showed the
+GrainBrick PCM writer blocked on its `aplay` pipe while PipeWire used the USB
+capture node (`priority.driver = 2000`) as the driver of the shared audio graph.
+
+**Fix:** give the internal H616 speaker sink `priority.driver = 3000` so local
+playback keeps running independently of iPhone audio activity. This has been
+verified on a real RG40XX H: local playback, iPhone recording and monitoring
+work together, including when Final Cut is closed and the iPhone is silent.
+
+The ROCKNIX installer now copies
+`rocknix/wireplumber/99-grainbrick-driver.conf` to
+`/storage/.config/wireplumber/wireplumber.conf.d/` and restarts WirePlumber.
+The package builder includes the same file. KNULLI and Zoom H1n routing are
+unchanged. To roll back, remove only the installed `99-grainbrick-driver.conf`
+and restart WirePlumber (or reboot).
+
+The fix addresses the observed playback freeze; it does not claim to resolve
+every USB-device or iOS power-management issue.
+
 ## Contents
 
 - [Install on ROCKNIX (recommended)](#install-on-rocknix-recommended)

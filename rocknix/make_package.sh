@@ -22,6 +22,8 @@ with zipfile.ZipFile(zip_path) as z:
 PY
 cp "$REPO/rg40xx-h-patch/grainbrick-beta/"*.py "$REPO/rg40xx-h-patch/grainbrick-beta/"*.sh "$OUT/$APP/"
 cp "$HERE/GrainBrick beta 1.0.1.sh" "$HERE/install.sh" "$HERE/gb-diag.sh" "$OUT/"
+mkdir -p "$OUT/wireplumber"
+cp "$HERE/wireplumber/99-grainbrick-driver.conf" "$OUT/wireplumber/"
 mkdir -p "$OUT/uac2"
 cp "$HERE/uac2/"* "$OUT/uac2/"
 echo "Package ready: $OUT"
