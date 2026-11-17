@@ -6,7 +6,12 @@ set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 PY=/storage/grainbrick-python
 PORTS=/storage/roms/ports
-APPN='grainbrick beta 1.0.1'
+# Which official GrainBrick is in this package: BETA 2.0 or 1.0.1.
+if [ -d "$HERE/grainbrick-beta2" ]; then
+  APPN='grainbrick-beta2'; LAUNCHER='GrainBrick BETA 2.0.sh'
+else
+  APPN='grainbrick beta 1.0.1'; LAUNCHER='GrainBrick beta 1.0.1.sh'
+fi
 TMP=/storage/.gb-install
 PYURL='https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-aarch64-unknown-linux-gnu-install_only.tar.gz'
 PYSHA=a945427411dc6851a1393533b74a4a1ac434321ae397f2ec69897a9b4fde032b
@@ -41,9 +46,29 @@ PYTHONPATH="$PY/site" "$PY/bin/python3.12" -c 'import os; os.environ["PYGAME_HID
 
 echo "=== 3/4 GrainBrick + GrainBernik patch"
 mkdir -p "$PORTS/$APPN"
+# BETA 2.0 ships its own settings, demo projects and samples: keep the user's
+# own data when re-installing over an existing copy (restored after the copy).
+KEEP='samples projects recordings orbix_presets settings.json tempo_settings.json sample_meta.json harmony_samples.json button_mapping.json midi_learn.json midi_settings.json ble_midi_devices.json sound_state.json rhythm_state.json orbix_resonator_state.json'
+KEPT="$TMP/userdata"
+rm -rf "$KEPT"
+if [ "$APPN" = grainbrick-beta2 ] && [ -f "$PORTS/$APPN/main.py" ]; then
+  mkdir -p "$KEPT"
+  for f in $KEEP; do
+    [ -e "$PORTS/$APPN/$f" ] && cp -a "$PORTS/$APPN/$f" "$KEPT/" && echo "kept: $f"
+  done
+fi
 cp -a "$HERE/$APPN/." "$PORTS/$APPN/"
-cp "$HERE/GrainBrick beta 1.0.1.sh" "$PORTS/"
-chmod +x "$PORTS/GrainBrick beta 1.0.1.sh" "$PORTS/$APPN"/*.sh 2>/dev/null || true
+if [ -d "$KEPT" ]; then
+  for f in $KEEP; do
+    if [ -e "$KEPT/$f" ]; then
+      rm -rf "$PORTS/$APPN/$f"
+      cp -a "$KEPT/$f" "$PORTS/$APPN/$f"
+    fi
+  done
+  rm -rf "$KEPT"
+fi
+cp "$HERE/$LAUNCHER" "$PORTS/"
+chmod +x "$PORTS/$LAUNCHER" "$PORTS/$APPN"/*.sh 2>/dev/null || true
 
 echo "=== USB Audio (UAC2) modules and scripts -> /storage/uac2"
 mkdir -p /storage/uac2
