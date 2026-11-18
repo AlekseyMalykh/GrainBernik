@@ -153,7 +153,8 @@ def main(version, out=None):
         'proprietary_application_included': False,
         'device': 'Anbernic RG40XX H',
         'grainbrick': 'BETA 2.0 (v2.0.0-beta.2)' if beta2 else 'beta 1.0.1',
-        'os': 'official ROCKNIX 20261101 (DDR4 image); KNULLI supported without iPhone mode',
+        'os': ('official ROCKNIX 20261101 (DDR4 image)' if beta2 else
+               'official ROCKNIX 20261101 (DDR4 image); KNULLI supported without iPhone mode'),
         'unit_tests': test_result,
         'assets_sha256': {z.name: sha256(z) for z in (patch, update)},
         'payload_sha256': {rel: sha256(p) for p, rel in patch_files},
