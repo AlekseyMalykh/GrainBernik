@@ -15,7 +15,8 @@ import unittest
 import zipfile
 
 REPO = Path(__file__).resolve().parents[1]
-LAUNCH = REPO / 'rg40xx-h-patch' / 'grainbrick-beta2' / 'gb_launch.py'
+BETA2 = REPO / 'rg40xx-h-patch' / 'grainbrick-beta2'
+LAUNCH = BETA2 / 'gb_launch.py'
 SCRIPT = REPO / 'rocknix' / 'GrainBrick BETA 2.0.sh'
 ZIP = os.environ.get('GRAINBRICK_BETA2_ZIP')
 
@@ -34,7 +35,7 @@ class StaticTests(unittest.TestCase):
         loaded = [n.value.args[0].value for n in ast.walk(tree)
                   if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call)
                   and getattr(n.value.func, 'id', '') == '_load_adapter']
-        self.assertEqual(loaded, ['gb_shutdown'])
+        self.assertEqual(loaded, ['gb_shutdown', 'gb_usb_settings'])
 
     def test_launcher_paths(self):
         text = SCRIPT.read_text()
@@ -88,7 +89,10 @@ class OfficialPackageTests(unittest.TestCase):
         app = out / 'grainbrick-beta2'
         self.assertTrue((app / 'main.py').is_file())
         self.assertEqual((app / 'gb_launch.py').read_bytes(), LAUNCH.read_bytes())
-        self.assertTrue((app / 'gb_shutdown.py').is_file())
+        for name in ('gb_shutdown', 'gb_usb_settings', 'gb_usb_audio', 'gb_usb_gadget', 'gb_pipewire'):
+            self.assertTrue((app / (name + '.py')).is_file(), name)
+        # BETA 2.0 has its own page; the 1.0.1 page (fixed 1.0.1 layout) must not ship.
+        self.assertEqual((app / 'gb_usb_settings.py').read_bytes(), (BETA2 / 'gb_usb_settings.py').read_bytes())
         self.assertFalse((app / 'gb_advanced.py').exists())
         self.assertTrue((out / 'GrainBrick BETA 2.0.sh').is_file())
         self.assertFalse((out / 'GrainBrick beta 1.0.1.sh').exists())

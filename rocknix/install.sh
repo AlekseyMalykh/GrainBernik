@@ -48,7 +48,7 @@ echo "=== 3/4 GrainBrick + GrainBernik patch"
 mkdir -p "$PORTS/$APPN"
 # BETA 2.0 ships its own settings, demo projects and samples: keep the user's
 # own data when re-installing over an existing copy (restored after the copy).
-KEEP='samples projects recordings orbix_presets settings.json tempo_settings.json sample_meta.json harmony_samples.json button_mapping.json midi_learn.json midi_settings.json ble_midi_devices.json sound_state.json rhythm_state.json orbix_resonator_state.json'
+KEEP='samples projects recordings orbix_presets settings.json tempo_settings.json sample_meta.json harmony_samples.json button_mapping.json midi_learn.json midi_settings.json ble_midi_devices.json gb_usb_audio.json sound_state.json rhythm_state.json orbix_resonator_state.json'
 KEPT="$TMP/userdata"
 rm -rf "$KEPT"
 if [ "$APPN" = grainbrick-beta2 ] && [ -f "$PORTS/$APPN/main.py" ]; then
@@ -58,6 +58,12 @@ if [ "$APPN" = grainbrick-beta2 ] && [ -f "$PORTS/$APPN/main.py" ]; then
   done
 fi
 cp -a "$HERE/$APPN/." "$PORTS/$APPN/"
+# Carry the iPhone / USB audio settings over from a GrainBernik 1.0.1 install.
+OLD101="$PORTS/grainbrick beta 1.0.1/gb_usb_audio.json"
+if [ "$APPN" = grainbrick-beta2 ] && [ -f "$OLD101" ] && [ ! -e "$KEPT/gb_usb_audio.json" ] \
+   && [ ! -e "$PORTS/$APPN/gb_usb_audio.json" ]; then
+  cp "$OLD101" "$PORTS/$APPN/gb_usb_audio.json" && echo "migrated: gb_usb_audio.json from 1.0.1"
+fi
 if [ -d "$KEPT" ]; then
   for f in $KEEP; do
     if [ -e "$KEPT/$f" ]; then
@@ -87,5 +93,5 @@ echo "=== 4/4 Import check (without opening the window)"
 cd "$PORTS/$APPN"
 PYTHONPATH="$PY/site:$PORTS/$APPN/_vendor" LD_LIBRARY_PATH="$PORTS/$APPN" "$PY/bin/python3.12" -c 'import numpy; print("numpy", numpy.__version__)'
 echo
-echo "Готово. Перезапустите меню (Start > Quit > Restart EmulationStation) или выполните: systemctl restart emustation"
+echo "Готово. Перезапустите меню (Start > Quit > Restart EmulationStation) или выполните: systemctl restart essway"
 echo "GrainBrick появится в разделе PORTS. Журнал запуска: $PORTS/$APPN/gb_launch.log"

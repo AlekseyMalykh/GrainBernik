@@ -2,14 +2,15 @@
 # No proprietary source is included: this file only prepares the environment,
 # loads the optional GrainBernik adapters, and imports the official main.py.
 #
-# Step 1 of the Beta 2.0 port: only adapters that are verified against the
-# Beta 2.0 sources are loaded (see docs/BETA2_PORT.md):
-#   gb_shutdown - recovers a stalled audio worker on Select+Start exit.
+# Beta 2.0 port: only adapters that are verified against the Beta 2.0 sources
+# are loaded (see docs/BETA2_PORT.md):
+#   gb_shutdown     - recovers a stalled audio worker on Select+Start exit.
+#   gb_usb_settings - IPHONE / USB AUDIO page and PipeWire routing (step 2).
 # Beta 2.0 already repairs recording WAV headers itself and has the same SDL
 # controller / display / USB-capture handling as 1.0.1, so gb_recording,
 # gb_buttons, gb_display_fit and gb_audio are intentionally NOT loaded.
-# The Advanced Settings, USB gadget (iPhone), quick settings and sample
-# adapters are not ported yet and are not loaded either.
+# The Advanced Settings, quick settings and sample adapters are not ported
+# yet and are not loaded either.
 import importlib
 import importlib.util
 import os
@@ -62,6 +63,12 @@ def _load_adapter(name):
 
 
 _load_adapter('gb_shutdown')
+
+# Optional iPhone / USB audio page; default OFF, no ConfigFS writes until the
+# user selects the IPHONE mode. Its imports use sibling modules.
+sys.path.insert(0, str(APP))
+_load_adapter('gb_usb_settings')
+sys.path.remove(str(APP))
 
 os.environ['GRAINBRICK_ROOT'] = str(APP)
 sys.path.insert(0, str(APP))

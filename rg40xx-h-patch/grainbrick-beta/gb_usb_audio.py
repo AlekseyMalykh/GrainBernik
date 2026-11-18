@@ -205,7 +205,7 @@ def guard(process, direction, settings_path=CONFIG, system=None):
 
 
 def install_engine_hooks(settings_path=None, system=None):
-    """Attach verified 1.0.1 enumeration and Popen extension points.
+    """Attach verified 1.0.1 / BETA 2.0 enumeration and Popen extension points.
 
     Existing DSP, worker buffering and recording editor stay in control.
     Caller must run after embedded engine modules exist, before main init.
@@ -271,12 +271,59 @@ def install_engine_hooks(settings_path=None, system=None):
             if getattr(module, name, None) is old:
                 setattr(module, name, new)
 
+    # GrainBrick BETA 2.0 rebuilds the capture PCM from the card id in
+    # usb_capture_select_fx28.create_capture_route(); keep our PipeWire
+    # target for the iPhone gadget (stereo pair 1/2 only).
+    routing = sys.modules.get('engine.usb_capture_select_fx28')
+    old_route = getattr(routing, 'create_capture_route', None)
+    if old_route is not None and not getattr(old_route, '_grainbernik', False):
+        def create_capture_route(choice, *args, **kwargs):
+            pcm = str(choice.get('device_pcm', '')) if isinstance(choice, dict) else ''
+            if pcm.startswith('pipewire:NODE=') and int(choice.get('first_channel', 0)) == 0 \
+                    and int(choice.get('channels', 2)) == 2:
+                return pcm, None
+            return old_route(choice, *args, **kwargs)
+        create_capture_route._grainbernik = True
+        for module in list(sys.modules.values()):
+            if module is not None and getattr(module, 'create_capture_route', None) is old_route:
+                setattr(module, 'create_capture_route', create_capture_route)
+
+    # PipeWire owns the gadget card: only the stereo pair 1/2 can be opened
+    # through it, so BETA 2.0's extra MONO / channel-pair choices are hidden.
+    old_discover = getattr(routing, 'discover_usb_choices', None)
+    if old_discover is not None and not getattr(old_discover, '_grainbernik', False):
+        def discover_usb_choices(*args, **kwargs):
+            return [c for c in old_discover(*args, **kwargs)
+                    if not str(c.get('device_pcm', '')).startswith('pipewire:NODE=')
+                    or (int(c.get('first_channel', 0)) == 0 and int(c.get('channels', 2)) == 2)]
+        discover_usb_choices._grainbernik = True
+        for module in list(sys.modules.values()):
+            if module is not None and getattr(module, 'discover_usb_choices', None) is old_discover:
+                setattr(module, 'discover_usb_choices', discover_usb_choices)
+
     original_popen = subprocess.Popen
+
+    def record_worker_device(args):
+        """BETA 2.0 USB recording runs as `python gb_usb_record_fx35.py --device PCM ...`."""
+        if not isinstance(args, (list, tuple)):
+            return None
+        strings = [str(v) for v in args]
+        if not any(os.path.basename(v) == 'gb_usb_record_fx35.py' for v in strings):
+            return None
+        if '--device' in strings and strings.index('--device') + 1 < len(strings):
+            return strings[strings.index('--device') + 1]
+        return None
 
     class USBPopen(original_popen):
         def __init__(self, args, *a, **kw):
             cfg, direction = Settings(settings_path).data, None
-            if isinstance(args, (list, tuple)) and args and cfg['mode'] == MODES[2]:
+            worker_pcm = record_worker_device(args)
+            if worker_pcm is not None and cfg['mode'] == MODES[2] \
+                    and worker_pcm.startswith('pipewire:NODE=alsa_input'):
+                direction = 'input'
+                if not cfg['input'] or not connected(system):
+                    raise OSError('USB Not Connected or direction disabled')
+            elif isinstance(args, (list, tuple)) and args and cfg['mode'] == MODES[2]:
                 tool = os.path.basename(str(args[0]))
                 # Only processes explicitly targeting the detected gadget. Never
                 # reroute built-in capture, arbitrary shell commands or system audio.
@@ -301,7 +348,7 @@ def install_engine_hooks(settings_path=None, system=None):
             super().__init__(args, *a, **kw)
             if direction:
                 guard(self, direction, settings_path, system)
-                if direction == 'input' and gb_pipewire.available():
+                if direction == 'input' and gb_pipewire.available() and worker_pcm is None:
                     gb_pipewire.track_recorder(self, cfg['monitor'])
 
     subprocess.Popen = USBPopen

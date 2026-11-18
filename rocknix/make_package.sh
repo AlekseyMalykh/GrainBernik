@@ -34,7 +34,9 @@ case "$APP" in
     LAUNCHER='GrainBrick BETA 2.0.sh'
     cp "$PATCH/"*.py "$OUT/$APP/"
     # Adapters shared with the 1.0.1 patch and verified against BETA 2.0.
-    cp "$REPO/rg40xx-h-patch/grainbrick-beta/gb_shutdown.py" "$OUT/$APP/"
+    for f in gb_shutdown gb_usb_audio gb_usb_gadget gb_pipewire; do
+      cp "$REPO/rg40xx-h-patch/grainbrick-beta/$f.py" "$OUT/$APP/"
+    done
     ;;
   *)
     LAUNCHER='GrainBrick beta 1.0.1.sh'
