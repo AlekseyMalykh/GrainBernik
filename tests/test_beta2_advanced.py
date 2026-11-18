@@ -191,6 +191,25 @@ class Beta2Advanced(unittest.TestCase):
         self.press('B')
         self.assertIsNone(m.page)
 
+    def test_active_preset_is_shown_and_becomes_user_after_a_change(self):
+        core, m = self.core, self.menu
+        self.assertEqual(core.active_preset(self.settings.data), 'None')
+        self.assertTrue(self.settings.apply_factory('Rings'))
+        self.assertEqual(core.active_preset(self.settings.data), 'Rings')
+        m.open()
+        self.assertEqual(dict((r[0], r[2]) for r in m.rows())['presets'], 'Rings')
+        m.page = 'presets'
+        self.assertEqual(dict((r[0], r[2]) for r in m.rows())['Rings'], 'ACTIVE')
+        self.settings.data['l2']['effect'] = 'Input Cut'     # any manual change
+        self.assertEqual(core.active_preset(self.settings.data), 'User')
+        self.assertEqual(dict((r[0], r[2]) for r in m.rows())['Rings'], '>')
+        self.settings.save_user()
+        self.assertEqual(dict((r[0], r[2]) for r in m.rows())['load_user'], 'ACTIVE')
+        # calibration is not part of a preset
+        self.settings.apply_factory('Live')
+        self.settings.data['left_stick']['deadzone'] = 20
+        self.assertEqual(core.active_preset(self.settings.data), 'Live')
+
     def test_left_right_do_not_change_values_outside_edit(self):
         m = self.menu
         m.open()

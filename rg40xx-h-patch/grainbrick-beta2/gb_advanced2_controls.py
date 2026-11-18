@@ -201,6 +201,17 @@ def factory_preset(name, current):
     return result
 
 
+def active_preset(data):
+    """Name of the factory preset the current assignments equal, 'User' once
+    anything differs from every factory preset, 'None' for untouched defaults."""
+    if data == defaults():
+        return 'None'
+    for name in FACTORY_PRESETS:
+        if factory_preset(name, data) == data:
+            return name
+    return 'User'
+
+
 def _number(value, low, high, fallback):
     if isinstance(value, bool):
         return fallback
@@ -579,14 +590,18 @@ class Menu:
             return [('cancel', 'Cancel', ''), (key, label, '')]
         if self.page == 'root':
             return [(name, label, 'ON' if self.settings.data[name]['enabled'] else 'OFF')
-                    for name, label in self.LABELS.items()] + [('presets', 'Presets', '>'),
+                    for name, label in self.LABELS.items()] + [
+                    ('presets', 'Preset', active_preset(self.settings.data)),
                     ('reset', 'Reset to Defaults', '>'), ('back', 'Back', '')]
         if self.page == 'presets':
             user_state = ('Empty' if self.settings.user_preset is None else 'Saved'
                           if self.controls.supports_preset(self.settings.user_preset) else 'Unavailable')
-            return [(name, name, '>' if self.controls.supports_preset(factory_preset(name, self.settings.data))
+            current = active_preset(self.settings.data)
+            return [(name, name, 'ACTIVE' if name == current else '>'
+                     if self.controls.supports_preset(factory_preset(name, self.settings.data))
                      else 'Unavailable') for name in FACTORY_PRESETS] + [
-                ('load_user', 'Load User', user_state),
+                ('load_user', 'Load User', 'ACTIVE' if current == 'User' and self.settings.user_preset
+                 == self.settings.data else user_state),
                 ('save_user', 'Save User', '>'), ('back', 'Back', '')]
         name = self.page.split('.')[0]
         cfg = self.settings.data[name]

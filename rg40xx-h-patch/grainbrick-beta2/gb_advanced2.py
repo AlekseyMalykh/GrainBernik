@@ -404,7 +404,9 @@ def _attach():
     old_context, old_poll, old_close, old_events = renderer.get_context_info, I.poll, I.close, A.events
 
     def ensure(ui=None):
-        gb_settings_rows.register(C, ui, PARAM, LABEL, lambda: '>')
+        gb_settings_rows.register(
+            C, ui, PARAM, LABEL,
+            lambda: _core.active_preset(_runtime.settings.data).upper() if _runtime else '>')
 
     def init(self, *args, **kw):
         global _runtime
