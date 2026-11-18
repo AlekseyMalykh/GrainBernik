@@ -19,6 +19,7 @@ import time
 import pygame
 from gb_usb_audio import MODES, Monitor, Settings, endpoints, install_engine_hooks
 import gb_pipewire
+import gb_settings_rows
 
 PARAM = 'settings.grainbernik_usb_audio'
 LABEL = 'IPHONE / USB AUDIO'
@@ -320,24 +321,11 @@ def _attach():
     old_init, old_handle, old_ui = C.__init__, C.handle, U.__init__
     old_draw, old_poll, old_close, old_save = U.draw_settings_page, I.poll, I.close, U._save_settings
     old_footer, old_context = U._gb_draw_footer, renderer.get_context_info
-    registered = {'done': False}
-
     def ensure(ui=None):
-        """Add the key and row once the RHYTHM/BLE integration has installed its own."""
-        if registered['done']:
-            return
-        if PARAM not in C.SETTINGS_PARAMS:
-            C.SETTINGS_PARAMS = list(C.SETTINGS_PARAMS) + [PARAM]
-        if ui is not None and not getattr(ui, '_grainbernik_usb_rows', False):
-            previous_rows = getattr(ui, 'gb_extra_settings_rows', None)
-
-            def extra_rows(controls, previous_rows=previous_rows):
-                rows = list(previous_rows(controls)) if previous_rows is not None else []
-                value = Runtime.SHORT.get(_runtime.settings.data['mode'], '>') if _runtime else '>'
-                return rows + [(PARAM, LABEL, value)]
-            ui.gb_extra_settings_rows = extra_rows
-            ui._grainbernik_usb_rows = True
-            registered['done'] = True
+        """Register the key and row once the RHYTHM/BLE integration has installed its own."""
+        gb_settings_rows.register(
+            C, ui, PARAM, LABEL,
+            lambda: Runtime.SHORT.get(_runtime.settings.data['mode'], '>') if _runtime else '>')
 
     def init(self, *args, **kw):
         global _runtime

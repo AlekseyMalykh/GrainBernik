@@ -6,11 +6,11 @@
 # are loaded (see docs/BETA2_PORT.md):
 #   gb_shutdown     - recovers a stalled audio worker on Select+Start exit.
 #   gb_usb_settings - IPHONE / USB AUDIO page and PipeWire routing (step 2).
+#   gb_advanced2    - STICKS & BUTTONS page: sticks, L2/R2, L3/R3 and presets (step 3).
 # Beta 2.0 already repairs recording WAV headers itself and has the same SDL
 # controller / display / USB-capture handling as 1.0.1, so gb_recording,
 # gb_buttons, gb_display_fit and gb_audio are intentionally NOT loaded.
-# The Advanced Settings, quick settings and sample adapters are not ported
-# yet and are not loaded either.
+# The quick settings and sample adapters are not ported yet and are not loaded.
 import importlib
 import importlib.util
 import os
@@ -68,6 +68,8 @@ _load_adapter('gb_shutdown')
 # user selects the IPHONE mode. Its imports use sibling modules.
 sys.path.insert(0, str(APP))
 _load_adapter('gb_usb_settings')
+# STICKS & BUTTONS page (sticks / L2 R2 / L3 R3 assignments, presets).
+_load_adapter('gb_advanced2')
 sys.path.remove(str(APP))
 
 os.environ['GRAINBRICK_ROOT'] = str(APP)

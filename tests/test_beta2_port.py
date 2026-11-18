@@ -35,7 +35,7 @@ class StaticTests(unittest.TestCase):
         loaded = [n.value.args[0].value for n in ast.walk(tree)
                   if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call)
                   and getattr(n.value.func, 'id', '') == '_load_adapter']
-        self.assertEqual(loaded, ['gb_shutdown', 'gb_usb_settings'])
+        self.assertEqual(loaded, ['gb_shutdown', 'gb_usb_settings', 'gb_advanced2'])
 
     def test_launcher_paths(self):
         text = SCRIPT.read_text()
@@ -89,7 +89,8 @@ class OfficialPackageTests(unittest.TestCase):
         app = out / 'grainbrick-beta2'
         self.assertTrue((app / 'main.py').is_file())
         self.assertEqual((app / 'gb_launch.py').read_bytes(), LAUNCH.read_bytes())
-        for name in ('gb_shutdown', 'gb_usb_settings', 'gb_usb_audio', 'gb_usb_gadget', 'gb_pipewire'):
+        for name in ('gb_shutdown', 'gb_usb_settings', 'gb_usb_audio', 'gb_usb_gadget', 'gb_pipewire',
+                     'gb_settings_rows', 'gb_advanced2', 'gb_advanced2_controls'):
             self.assertTrue((app / (name + '.py')).is_file(), name)
         # BETA 2.0 has its own page; the 1.0.1 page (fixed 1.0.1 layout) must not ship.
         self.assertEqual((app / 'gb_usb_settings.py').read_bytes(), (BETA2 / 'gb_usb_settings.py').read_bytes())

@@ -24,7 +24,7 @@ BETA2 = REPO / 'rg40xx-h-patch' / 'grainbrick-beta2'
 ZIP = os.environ.get('GRAINBRICK_BETA2_ZIP')
 NAMES = ('pygame', 'pygame.draw', 'engine', 'engine.audio_inputs', 'engine.audio_devices',
          'engine.usb_capture_select_fx28', 'engine.control', 'engine.input', 'ui', 'ui.renderer',
-         'gb_usb_settings', 'gb_usb_audio', 'gb_usb_gadget', 'gb_pipewire')
+         'gb_usb_settings', 'gb_usb_audio', 'gb_usb_gadget', 'gb_pipewire', 'gb_settings_rows')
 
 
 class FakeControl:

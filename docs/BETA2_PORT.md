@@ -24,7 +24,8 @@ your own copy of `GrainBrick_BETA_2_0.zip`.
 | `gb_buttons` | BETA 2.0 has the same SDL-controller input as 1.0.1 (off on ROCKNIX). |
 | `gb_recording` | BETA 2.0's `AudioRecorder.stop` repairs WAV headers itself. |
 | `gb_display_fit`, `gb_audio` | Native display and USB-capture handling, as in 1.0.1. |
-| `gb_advanced`, `gb_quick_settings`, `gb_samples` | Refuse to attach: BETA 2.0 extends `ControlManager.SETTINGS_PARAMS` (color theme, CPU performance, debug logs, output boost, MIDI, tempo, BLE) and their guards accept only the 1.0.1 list. Step 3. |
+| `gb_quick_settings`, `gb_samples` | Refuse to attach: BETA 2.0 extends `ControlManager.SETTINGS_PARAMS` (color theme, CPU performance, debug logs, output boost, MIDI, tempo, BLE) and their guards accept only the 1.0.1 list. Step 2b. |
+| `gb_advanced` (1.0.1) | Replaced by `gb_advanced2` (step 3). |
 
 ### Verified without a device
 
@@ -55,10 +56,50 @@ your own copy of `GrainBrick_BETA_2_0.zip`.
   does not touch them.
 - Settings file `gb_usb_audio.json` is kept on re-install and migrated from a 1.0.1 install.
 
+## Step 3: STICKS & BUTTONS (Advanced Settings)
+
+New SETTINGS row `STICKS & BUTTONS` (last row, after RHYTHM/BLE/IPHONE). Assigns
+left/right stick X/Y, L2/R2 (Hold/Toggle effects) and L3/R3 (stick clicks) to
+sound parameters, with factory presets and a User slot. Same
+`grainbernik_advanced` block in `settings.json` as the 1.0.1 version, so
+existing assignments are kept (ids that do not exist in 2.0 are dropped).
+
+Console Controls: A opens a submenu / starts editing a value (ON/OFF rows flip
+at once), B leaves (first ends editing), LEFT/RIGHT change a value being
+edited, A held + LEFT/RIGHT (quick change) changes the focused value without
+entering edit mode. L/R/TAB are blocked while the page is open.
+
+Differences from the 1.0.1 adapter:
+- Buttons come from the engine's `AutoKeyAdapter` output (virtual L2=10, R2=11,
+  L3=15, R3=16); no SDL mapping parsing, no polling proxy (2.0 never polls
+  buttons). L3/R3 are owned on every screen while ON; L2/R2 on GRAIN/FX/TAPE/
+  VISUAL only, and only with an effect.
+- The row/key are registered lazily through `gb_settings_rows`, shared with the
+  USB page, so the key list and renderer rows stay aligned in any order.
+- No NAV_FIX wrap hack (2.0 wraps the SETTINGS list natively).
+
+New content (every id verified against the real 2.0 `ParameterBus`, 253 ids):
+- Axes (61): GRAIN 2/3 (pitch spread, size/timing random, reverse chance,
+  envelope), roam, delay/reverb/shimmer/tape, ORBIX, **ORBIX Rings** (structure,
+  brightness, damping, position, mix, tune, detune, stereo, noise, excite),
+  **OSCILLATOR** (blend, dry/wet, drive, x-mod, balance, level), **tempo**
+  (BPM, offset), **LIVE** input and master level. Removed: filter.*, tape.speed,
+  pan (not parameters in 2.0).
+- Button effects: Scatter, Reverse Grains, Rings Bloom/Damp/Detune, Osc On/
+  Drive/FM, Slow Down/Speed Up (relative BPM), Tempo +5/-5 (steps), Input Cut,
+  Input Boost, Mute Out, besides the 1.0.1 effects.
+- Presets: Granular, Ambient, Texture, Echo, Tape, ORBIX Play (as before) and
+  **Rhythm, Rings, Oscillator, Live, Grain 2/3**.
+
+Limits: RHYTHM pattern parameters live in the rhythm app, not in the
+ParameterBus, so only the shared tempo is assignable. A Hold effect on tempo
+fights Link/tap tempo while pressed.
+
+Test: `GRAINBRICK_BETA2_ZIP=... python3 -m pytest tests/test_beta2_advanced.py`.
+
 ## Steps still to do
 
 2b. Quick settings and deleting recorded samples from inside the app.
-3. Advanced Settings (L3/R3, presets) and ORBIX assignments against the new ORBIX / RHYTHM UI.
 4. Performance check on the H700 (Rings resonator, LIVE), BLE MIDI on ROCKNIX; then release.
 
 Test with the official package:
