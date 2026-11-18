@@ -199,11 +199,18 @@ class Beta2USBSettings(unittest.TestCase):
         self.assertEqual(keys.count(page.PARAM), 1)
         self.assertEqual(len(ui.gb_extra_settings_rows(controls)), 2)
 
-    def test_page_opens_on_a_changes_mode_and_closes_on_b(self):
+    def open_page(self):
         page, controls, ui = self.attach()
         ui.draw_settings_page(controls)
         controls.settings_param_index = self.control.ControlManager.SETTINGS_PARAMS.index(page.PARAM)
         controls.handle('A')
+        return page, controls, ui
+
+    def mode(self, page):
+        return page._runtime.settings.data['mode']
+
+    def test_a_opens_the_page_and_b_closes_it(self):
+        page, controls, ui = self.open_page()
         self.assertTrue(page._runtime.open)
         self.assertEqual(controls.handled, [])           # consumed here
         self.assertFalse(controls.console_edit)
@@ -211,12 +218,56 @@ class Beta2USBSettings(unittest.TestCase):
         ui.draw_settings_page(controls)
         self.assertIn('info:' + page.PARAM, ui.calls)
         self.assertNotIn('native', ui.calls)
-        controls.handle('RIGHT')                          # focus is on MODE: next mode
-        self.assertEqual(page._runtime.settings.data['mode'], self.audio.MODES[0])
         controls.handle('B')
         self.assertFalse(page._runtime.open)
         controls.handle('LEFT')                           # delegated to the original handler
         self.assertEqual(controls.handled, ['LEFT'])
+
+    def test_left_right_do_nothing_until_a_starts_editing(self):
+        page, controls, ui = self.open_page()
+        before = self.mode(page)
+        controls.handle('RIGHT')
+        controls.handle('LEFT')
+        self.assertEqual(self.mode(page), before)
+        controls.handle('A')                              # edit MODE
+        self.assertTrue(page._runtime.edit)
+        controls.handle('RIGHT')
+        self.assertEqual(self.mode(page), self.audio.MODES[0])   # iPhone -> next, wraps to Disabled
+        controls.handle('DOWN')                           # focus stays on the field
+        self.assertEqual(page._runtime.index, 0)
+        controls.handle('B')                              # B ends the edit, page stays
+        self.assertFalse(page._runtime.edit)
+        self.assertTrue(page._runtime.open)
+        controls.handle('B')
+        self.assertFalse(page._runtime.open)
+
+    def test_hold_a_and_dpad_changes_at_once_without_editing(self):
+        page, controls, ui = self.open_page()
+        controls.handle('ADJUST_RIGHT')
+        self.assertEqual(self.mode(page), self.audio.MODES[0])
+        controls.handle('ADJUST_LEFT')
+        self.assertEqual(self.mode(page), self.audio.MODES[2])
+        self.assertFalse(page._runtime.edit)
+
+    def test_on_off_fields_toggle_on_a_and_set_by_adjust(self):
+        page, controls, ui = self.open_page()
+        controls.handle('DOWN')                           # SEND TO IPHONE
+        data = page._runtime.settings.data
+        self.assertTrue(data['output'])
+        controls.handle('A')
+        self.assertFalse(page._runtime.settings.data['output'])
+        controls.handle('ADJUST_RIGHT')
+        self.assertTrue(page._runtime.settings.data['output'])
+        controls.handle('ADJUST_LEFT')
+        self.assertFalse(page._runtime.settings.data['output'])
+        self.assertFalse(page._runtime.edit)
+
+    def test_back_row_closes_with_a(self):
+        page, controls, ui = self.open_page()
+        for _ in range(4):
+            controls.handle('DOWN')                       # rows: MODE OUTPUT INPUT STATUS BACK
+        controls.handle('A')
+        self.assertFalse(page._runtime.open)
 
     def test_other_layers_still_see_other_settings_rows(self):
         page, controls, ui = self.attach()
@@ -230,9 +281,11 @@ class Beta2USBSettings(unittest.TestCase):
         ui.draw_settings_page(controls)
         controls.settings_param_index = self.control.ControlManager.SETTINGS_PARAMS.index(page.PARAM)
         controls.handle('A')
+        controls.handle('A')                              # editing MODE
         controls.current_tab = 'GRAIN'
         ui.draw_settings_page(controls)
         self.assertFalse(page._runtime.open)
+        self.assertFalse(page._runtime.edit)
         title, text = self.renderer.get_context_info(page.PARAM, 'RU')
         self.assertEqual(title, page.LABEL)
         self.assertIn('IPHONE', text.upper())

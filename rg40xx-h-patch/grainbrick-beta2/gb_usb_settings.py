@@ -31,7 +31,7 @@ class Runtime:
         self.controller, self.ui = controller, None
         self.settings = settings or Settings()
         self.monitor = monitor or Monitor()
-        self.open, self.index = False, 0
+        self.open, self.index, self.edit = False, 0, False
         self.last_scan = 0
         self.connection, self.device = 'Unknown', 'Not Probed'
         self.owned_output = False
@@ -108,12 +108,12 @@ class Runtime:
     # ---------------------------------------------------------------- page
     SHORT = {MODES[0]: 'OFF', MODES[1]: 'USB INTERFACE', MODES[2]: 'IPHONE'}
     HELP = {
-        'mode': ('IPHONE: THE CONSOLE BECOMES A USB SOUND CARD FOR THE IPHONE. USB INTERFACE: AN EXTERNAL USB SOUND CARD, NATIVE MODE.',
-                 'IPHONE: КОНСОЛЬ СТАНОВИТСЯ ЗВУКОВОЙ КАРТОЙ ДЛЯ IPHONE. USB-ИНТЕРФЕЙС: ВНЕШНЯЯ USB-КАРТА, ШТАТНЫЙ РЕЖИМ.'),
-        'output': ('GRAINBRICK PLAYS TO THE HEADPHONES/SPEAKER AND TO THE IPHONE AT THE SAME TIME.',
-                   'GRAINBRICK ЗВУЧИТ В НАУШНИКАХ/ДИНАМИКЕ И В IPHONE ОДНОВРЕМЕННО.'),
-        'input': ('RECORD OR PLAY THE IPHONE SOUND: SAMPLE > RECORD / LIVE > USB INPUT. MONITORING IS IN THE REC SCREEN.',
-                  'ЗВУК IPHONE: SAMPLE > ЗАПИСЬ / LIVE > USB-ВХОД. МОНИТОРИНГ - НА ЭКРАНЕ ЗАПИСИ.'),
+        'mode': ('A: EDIT, THEN LEFT/RIGHT. OR HOLD A AND PRESS LEFT/RIGHT. IPHONE: THE CONSOLE IS A USB SOUND CARD FOR THE IPHONE.',
+                 'A: ПРАВКА, ЗАТЕМ ВЛЕВО/ВПРАВО. ИЛИ ДЕРЖИТЕ A И ЖМИТЕ ВЛЕВО/ВПРАВО. IPHONE: КОНСОЛЬ - ЗВУКОВАЯ КАРТА ДЛЯ IPHONE.'),
+        'output': ('A: ON/OFF. GRAINBRICK PLAYS TO THE HEADPHONES/SPEAKER AND TO THE IPHONE AT THE SAME TIME.',
+                   'A: ВКЛ/ВЫКЛ. GRAINBRICK ЗВУЧИТ В НАУШНИКАХ/ДИНАМИКЕ И В IPHONE ОДНОВРЕМЕННО.'),
+        'input': ('A: ON/OFF. RECORD OR PLAY THE IPHONE SOUND: SAMPLE > RECORD / LIVE > USB INPUT. MONITORING IS IN THE REC SCREEN.',
+                  'A: ВКЛ/ВЫКЛ. ЗВУК IPHONE: SAMPLE > ЗАПИСЬ / LIVE > USB-ВХОД. МОНИТОРИНГ - НА ЭКРАНЕ ЗАПИСИ.'),
         'status': ('A: START OR RESTART THE USB SOUND CARD MODE OF THE CONSOLE.',
                    'A: ЗАПУСТИТЬ ИЛИ ПЕРЕЗАПУСТИТЬ РЕЖИМ USB-ЗВУКОВОЙ КАРТЫ.'),
         'back': ('RETURN TO SETTINGS. CHANGES ARE ALREADY SAVED.', 'НАЗАД В НАСТРОЙКИ. ИЗМЕНЕНИЯ УЖЕ СОХРАНЕНЫ.'),
@@ -151,16 +151,40 @@ class Runtime:
             return LABEL, self.INTRO[1 if ru else 0]
         return LABEL, self.HELP[self.rows()[self.index][0]][1 if ru else 0]
 
+    def _change(self, key, direction=None):
+        """Apply a value change. direction: -1/+1 for MODE; OFF/ON for the toggles."""
+        data = copy.deepcopy(self.settings.data)
+        if key == 'mode':
+            data['mode'] = MODES[(MODES.index(data['mode']) + direction) % len(MODES)]
+        elif direction is None:
+            data[key] = not data[key]
+        else:
+            data[key] = direction > 0
+        if data == self.settings.data or not self.settings.save(data):
+            return
+        if key == 'mode':
+            if data['mode'] == MODES[2]:
+                gadget.start()
+            elif gadget.active():
+                gb_pipewire.stop_monitor()
+                gadget.stop()
+        self.last_scan = 0
+        self.tick()
+
     def handle(self, action):
-        """Return True when the action was consumed by this page."""
+        """Return True when the action was consumed by this page.
+
+        Same contract as the native "Console Controls" of BETA 2.0:
+        A enters the page / a field, B leaves, LEFT/RIGHT edit while a field is
+        being edited, and A held + LEFT/RIGHT (ADJUST_*) changes a value at once.
+        """
         if not self.open:
             if (self.controller.current_tab == 'SETTINGS' and self.controller.current_param == PARAM
                     and action == 'A'
                     and not getattr(self.controller, 'theme_subpage', False)
                     and not getattr(self.controller, 'debug_menu_active', False)
                     and not getattr(self.controller, 'ble_menu_active', False)):
-                self.open = True
-                self.index = 0
+                self.open, self.index, self.edit = True, 0, False
                 self.controller.console_edit = False
                 self.last_scan = 0
                 self.tick()
@@ -171,29 +195,32 @@ class Runtime:
         if action in ('L', 'R', 'TAB_PREV', 'TAB_NEXT'):
             return True  # tab switching is blocked while the page is open
         key = self.rows()[self.index][0]
-        if action == 'B' or key == 'back' and action in ('A', 'RIGHT'):
-            self.open = False
+        if action == 'B':
+            if self.edit:
+                self.edit = False
+            else:
+                self.open = False
+        elif self.edit:
+            if action in ('LEFT', 'RIGHT', 'ADJUST_LEFT', 'ADJUST_RIGHT'):
+                self._change(key, -1 if action.endswith('LEFT') else 1)
+            elif action == 'A':
+                self.edit = False
+            # UP/DOWN keep the focus on the field until A/B ends the edit.
         elif action in ('UP', 'DOWN'):
             self.index = (self.index + (-1 if action == 'UP' else 1)) % len(self.rows())
-        elif key == 'status' and action == 'A':
-            if self.settings.data['mode'] == MODES[2]:
-                gadget.start(restart=True)
-        elif action in ('LEFT', 'RIGHT', 'A', 'ADJUST_LEFT', 'ADJUST_RIGHT') and key in ('mode', 'output', 'input'):
-            data = copy.deepcopy(self.settings.data)
-            if key == 'mode':
-                step = -1 if action in ('LEFT', 'ADJUST_LEFT') else 1
-                data['mode'] = MODES[(MODES.index(data['mode']) + step) % len(MODES)]
+        elif action in ('ADJUST_LEFT', 'ADJUST_RIGHT'):
+            if key in ('mode', 'output', 'input'):
+                self._change(key, -1 if action == 'ADJUST_LEFT' else 1)
+        elif action == 'A':
+            if key == 'back':
+                self.open = False
+            elif key == 'status':
+                if self.settings.data['mode'] == MODES[2]:
+                    gadget.start(restart=True)
+            elif key == 'mode':
+                self.edit = True
             else:
-                data[key] = not data[key]
-            if self.settings.save(data):
-                if key == 'mode':
-                    if data['mode'] == MODES[2]:
-                        gadget.start()
-                    elif gadget.active():
-                        gb_pipewire.stop_monitor()
-                        gadget.stop()
-                self.last_scan = 0
-                self.tick()
+                self._change(key)  # ON/OFF fields toggle directly
         return True
 
     def draw(self, ui):
@@ -212,7 +239,10 @@ class Runtime:
             color = ui.ACCENT if focused else ui.DIM if disabled else ui.WHITE
             ui.text('>' if focused else ' ', 35, y, 3, ui.ACCENT)
             ui.text(label, 65, y, 3, color)
-            ui.text(value[:22], 573, y, 3, color)
+            shown = value[:20]
+            if focused and self.edit:
+                shown = '< ' + shown + ' >'
+            ui.text(shown, 573, y, 3, color)
         if self.settings.error:
             ui.text('NOT SAVED: CHECK USB CONFIG FILE', 65, 666, 2, ui.ACCENT)
         elif iphone:
@@ -328,7 +358,7 @@ def _attach():
     def draw(self, controls):
         ensure(self)
         if _runtime and _runtime.open and controls.current_tab != 'SETTINGS':
-            _runtime.open = False  # another layer switched the tab
+            _runtime.open = _runtime.edit = False  # another layer switched the tab
         if _runtime and _runtime.open and controls.current_tab == 'SETTINGS':
             _runtime.draw(self)
             return
@@ -337,8 +367,12 @@ def _attach():
     def footer(self, controls, audio_worker):
         if _runtime and _runtime.open and controls.current_tab == 'SETTINGS':
             pygame.draw.line(self.screen, self.VERY_DIM, (38, 702), (986, 702), 1)
-            self.draw_bar_items([('D-PAD NAV', self.DIM), ('A CHANGE', self.ACCENT),
-                                 ('B BACK', self.DIM)], left=54, right=795)
+            if _runtime.edit:
+                items = [('LEFT/RIGHT CHANGE', self.ACCENT), ('A/B DONE', self.DIM)]
+            else:
+                items = [('D-PAD NAV', self.DIM), ('A EDIT', self.ACCENT),
+                         ('A+L/R QUICK', self.DIM), ('B BACK', self.DIM)]
+            self.draw_bar_items(items, left=54, right=795)
             return
         return old_footer(self, controls, audio_worker)
 

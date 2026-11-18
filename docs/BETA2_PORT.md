@@ -45,6 +45,10 @@ your own copy of `GrainBrick_BETA_2_0.zip`.
   BETA 2.0: `create_capture_route` keeps the PipeWire target for the gadget; only the stereo
   pair 1/2 is offered for it (PipeWire owns the card); the direct USB record worker
   `gb_usb_record_fx35.py` is guarded like `arecord` (stops on unplug / mode change).
+- Controls follow the native "Console Controls" contract of BETA 2.0: **A** opens the page and
+  starts editing MODE, **B** ends the edit / leaves the page, **LEFT/RIGHT** change the value while
+  editing, **hold A + LEFT/RIGHT** changes it at once (released A does nothing more). ON/OFF fields
+  toggle with A (A+LEFT = OFF, A+RIGHT = ON). All later pages (presets, Advanced Settings) must use it.
 - Monitoring while recording is native in BETA 2.0 (REC screen), so the old SELECT-toggled
   `pw-loopback` monitor and the MONITOR option are not used.
 - External USB devices (e.g. M-VAVE FM1, Zoom H1n) use the native BETA 2.0 path; the adapter
