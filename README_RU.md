@@ -1,286 +1,244 @@
 # GrainBernik
 
-[English](README.md) | Русский
+[English](README.md) | [Русский](README_RU.md)
 
-**GrainBernik** — неофициальный патч [GrainBrick](https://github.com/ETRNLIAM/GrainBrick)
-(инструмент для гранулярного эмбиента) для **Anbernic RG40XX H** (экран 640×480).
+**GrainBernik** — неофициальная надстройка для гранулярного эмбиент-инструмента
+[GrainBrick](https://github.com/ETRNLIAM/GrainBrick) (ETRNLIAM) для
+**Anbernic RG40XX H** с официальной **ROCKNIX**.
 
-Главное:
+Она **не меняет и не распространяет** GrainBrick: закрытое приложение берётся из
+вашей копии официального ZIP, а GrainBernik добавляет только запускатель,
+адаптеры и USB-аудио.
 
-- **RG40XX H — двусторонняя USB-звуковая карта для iPhone** (ROCKNIX):
-  GrainBrick звучит одновременно в наушниках консоли **и** в iPhone, звук с
-  iPhone записывается в SAMPLE, есть мониторинг входа. Примерно как Akai MPC
-  Sample с iPhone.
-- **Стики и кнопки**: левый/правый стик по X/Y, L2/R2 и нажатия на стики
-  L3/R3 — независимые органы управления звуком, 6 пресетов.
-- **Удаление записей** прямо в браузере SAMPLE.
-- Раскладка и подписи кнопок RG40XX H.
+| У вас | Берите GrainBernik | Описание |
+|---|---|---|
+| GrainBrick **BETA 2.0** (RHYTHM, ORBIX Rings, OSCILLATOR, LIVE, GRAIN 2/3) | **v0.3.x** (эта страница) | ниже |
+| GrainBrick beta **1.0.1** | v0.2.x | [docs/LEGACY_1_0_1_RU.md](docs/LEGACY_1_0_1_RU.md) |
 
-Патч не изменяет и не распространяет закрытое приложение GrainBrick: нужен
-официальный `grainbrick.beta.1.0.1.zip` от автора.
+## Что GrainBernik 0.3 добавляет к GrainBrick BETA 2.0
 
-**Скачать:** [GrainBernik v0.2.0-beta.1](https://github.com/AlekseyMalykh/GrainBernik/releases/tag/v0.2.0-beta.1)
-— архив **patch** для новой установки, **update** для обновления
-([описание релиза](docs/releases/v0.2.0-beta.1.md)).
+- **RG40XX H как двусторонняя USB-звуковая карта для iPhone.** GrainBrick звучит
+  одновременно в наушниках и в iPhone, а звук iPhone можно записывать и
+  обрабатывать (SAMPLE → запись, LIVE → USB-вход). Внешние USB-устройства
+  (M-VAVE FM1, Zoom H1n) работают как и раньше.
+- **STICKS & BUTTONS.** Оба стика (X/Y), L2/R2 и нажатия на стики L3/R3 — это
+  независимые органы управления звуком: 61 параметр для стиков, 29 эффектов на
+  кнопки, 11 пресетов и один пользовательский слот — в том числе для **RHYTHM**,
+  **ORBIX Rings**, **OSCILLATOR**, **LIVE** и **GRAIN 2/3**.
+- **Как в самом приложении.** Обе страницы работают по схеме *Console Controls*
+  BETA 2.0 (A — войти/править, B — назад, LEFT/RIGHT — изменить, **удерживать
+  A + LEFT/RIGHT** — быстрая правка), есть русский и английский (язык INFO).
+- **Запуск на ROCKNIX.** Отдельные Python 3.12 + pygame, режим CPU performance во
+  время работы, корректный выход по **Select + Start**, подписи кнопок A/B и X/Y
+  как на корпусе.
 
-> **Статус (6 ноября 2026):** проверено на RG40XX H с **официальным ROCKNIX
-> 20261101 (образ DDR4)** и **iPhone 16**: звук в наушники + iPhone, запись с
-> iPhone, мониторинг, L3/R3, пресеты и удаление записей работают. На KNULLI всё
-> работает как раньше, но режим USB-звуковой карты его ядро не поддерживает
-> (см. [Почему ROCKNIX](#почему-rocknix-для-iphone)).
+## Что нужно
 
+- Anbernic **RG40XX H** с официальной **ROCKNIX 20261101** (образ DDR4) —
+  подготовка SD-карты, Wi-Fi и SSH описаны
+  [здесь](docs/LEGACY_1_0_1_RU.md#установка-на-rocknix-рекомендуется). Режим iPhone
+  требует ROCKNIX (ядро KNULLI USB-звуковую карту не поддерживает).
+- Официальный **`GrainBrick_BETA_2_0.zip`** из
+  [релизов GrainBrick](https://github.com/ETRNLIAM/GrainBrick/releases)
+  (тег `v2.0.0-beta.2`). Не «Source code» с GitHub.
+- ПК с Python 3 и `scp`/`ssh`. Консоли один раз нужен интернет (установщик
+  скачивает Python 3.12 и pygame с проверкой SHA-256).
 
-## ROCKNIX: исправление зависания Play (v0.2.1-beta.1)
+## Установка на ROCKNIX
 
-На RG40XX H при подключённом iPhone через UAC2 значок **Play** мог гореть,
-но полоса воспроизведения и звук останавливались через 6–8 секунд после
-прекращения воспроизведения на iPhone. При этом запись и мониторинг работали.
-Диагностика показала блокировку записи PCM-данных в `aplay` и выбор USB-входа
-как драйвера общего аудиографа PipeWire (`priority.driver = 2000`).
-
-**Исправление:** внутреннему динамику H616 задан более высокий приоритет
-`priority.driver = 3000`. Проверено на реальном RG40XX H: Play, запись
-с iPhone и мониторинг работают одновременно, даже если Final Cut закрыт,
-а на iPhone нет воспроизведения.
-
-Установщик ROCKNIX автоматически копирует файл
-`rocknix/wireplumber/99-grainbrick-driver.conf` в
-`/storage/.config/wireplumber/wireplumber.conf.d/` и перезапускает WirePlumber.
-Сборщик пакета включает файл в установочный комплект. Маршрутизация Zoom H1n
-и установка KNULLI не изменены. Для отката удалите только установленный
-`99-grainbrick-driver.conf` и перезапустите WirePlumber (или приставку).
-
-Исправление касается подтверждённого зависания Play, но не гарантирует
-устранение всех проблем USB-подключения и питания iPhone.
-
-## Содержание
-
-- [Установка на ROCKNIX (рекомендуется)](#установка-на-rocknix-рекомендуется)
-- [Меню настроек](#меню-настроек)
-- [iPhone / USB-звук](#iphone--usb-звук)
-- [Удаление записей](#удаление-записей)
-- [Стики и кнопки](#стики-и-кнопки)
-- [Кнопки](#кнопки)
-- [Установка на KNULLI](#установка-на-knulli)
-- [Сборка модулей USB-звука](#сборка-модулей-usb-звука)
-- [Параметры](#параметры)
-
-## Установка на ROCKNIX (рекомендуется)
-
-1. **ROCKNIX.** Запишите официальный `ROCKNIX-H700.aarch64-20261101-DDR4.img.gz`
-   ([релизы](https://github.com/ROCKNIX/distribution/releases)) через Raspberry
-   Pi Imager. На разделе **ROCKNIX** скопируйте
-   `device_trees/sun50i-h700-anbernic-rg40xx-h.dtb` в корень и переименуйте
-   копию в `dtb.img`. На нашей RG40XX H образ DDR3 не запускается.
-   В меню ROCKNIX подключите Wi-Fi и включите SSH.
-2. **Пакет.** На компьютере с Python 3 (Linux, WSL, macOS):
+1. **Соберите пакет** на ПК (Linux / WSL / macOS; в Windows — через WSL):
    ```sh
-   sh rocknix/make_package.sh /путь/к/grainbrick.beta.1.0.1.zip grainbernik-rocknix
+   sh rocknix/make_package.sh /path/to/GrainBrick_BETA_2_0.zip grainbernik-rocknix
    ```
-   Скрипт собирает вместе официальное приложение, патч GrainBernik,
-   запускалку для ROCKNIX и готовые модули USB-звука.
-3. **Копирование и установка** (пароль `rocknix`):
+   Он объединяет официальное приложение, адаптеры GrainBernik, запускатель и
+   готовые модули USB-звука. (Файлы официального приложения не публикуйте.)
+2. **Скопируйте и установите** (пароль по умолчанию `rocknix`):
    ```sh
    scp -r grainbernik-rocknix root@<ip-консоли>:/storage/
-   ssh root@<ip-консоли> sh /storage/grainbernik-rocknix/install.sh
+   ssh root@<ip-консоли> "sh /storage/grainbernik-rocknix/install.sh"
    ```
-   Установщик один раз скачивает Python 3.12 (python-build-standalone) и
-   pygame 2.6.1 в `/storage/grainbrick-python` (с проверкой SHA-256),
-   подключает SDL2 из ROCKNIX, копирует GrainBrick в `/storage/roms/ports`, а
-   файлы USB-звука — в `/storage/uac2`. Системные файлы ROCKNIX не меняются.
-4. Перезапустите меню (`systemctl restart essway`) — в **PORTS** появится
-   **GrainBrick beta 1.0.1**. Для обновления соберите пакет заново,
-   скопируйте и снова запустите `install.sh`: сэмплы, проекты и настройки
-   сохраняются. Перезагружать консоль не нужно.
+3. **Перезапустите меню:** `ssh root@<ip-консоли> systemctl restart essway`
+   (или Start → Quit → Restart EmulationStation). **GrainBrick BETA 2.0**
+   появится в разделе **PORTS**.
 
-Пока GrainBrick открыт, процессор работает в режиме `performance`, а
-неиспользуемый микшер pygame выключен (`SDL_AUDIODRIVER=dummy`) — это
-устраняет зависание при выходе по **Select + Start**; зависший аудиопроцесс при
-выходе завершается.
+Куда ставится: приложение — `/storage/roms/ports/grainbrick-beta2/`, запускатель
+`GrainBrick BETA 2.0.sh` рядом, Python — `/storage/grainbrick-python`, файлы
+USB-звука — `/storage/uac2`. Установка 1.0.1 (`grainbrick beta 1.0.1/`) не
+затрагивается, обе версии могут стоять рядом.
 
-**Обновление** установленного GrainBernik: распакуйте архив **update**,
-скопируйте `grainbrick-beta/*` в `/storage/roms/ports/grainbrick beta 1.0.1/`, а
-`rocknix/GrainBrick beta 1.0.1.sh` — в `/storage/roms/ports/` (нужны оба шага).
-Настройки, сэмплы, проекты и записи сохраняются.
+**Обновление** — соберите новый пакет и снова запустите `install.sh`.
+Сохраняются `samples`, `projects`, `recordings`, `settings.json` (в нём же
+STICKS & BUTTONS), `gb_usb_audio.json` и остальные файлы состояния. При первой
+установке поверх 1.0.1 переносится `gb_usb_audio.json`; сэмплы и проекты из 1.0.1
+скопируйте вручную, если они нужны в BETA 2.0.
 
-## Меню настроек
+**Удаление** — удалите `/storage/roms/ports/grainbrick-beta2/` и
+`/storage/roms/ports/GrainBrick BETA 2.0.sh` (сначала сохраните samples/projects);
+`/storage/uac2` и `/storage/grainbrick-python` тоже можно удалить.
 
-**SETTINGS** сокращено до пяти пунктов, штатные пункты перенесены в OTHER:
+## Управление (BETA 2.0 «Console Controls»)
 
-| Пункт | Что внутри |
+| Действие | Кнопки |
 |---|---|
-| **AUDIO** | Быстрая страница: **CONNECTION** (AUTO / IPHONE), **INPUT** (найденный USB-вход), **OUTPUT** |
-| **AUDIO / ADVANCED** | Полная страница IPHONE / USB AUDIO (ниже) и PLAYBACK OUTPUT |
-| **CONTROLS** | Пресеты «Стиков и кнопок» (сразу открывает список пресетов) |
-| **CONTROLS / ADVANCED** | Полный редактор «Стиков и кнопок» |
-| **OTHER SETTINGS** | Язык подсказок, сохранение при выходе, переназначение кнопок, сброс звука |
+| Войти в меню / начать правку поля | **A** |
+| Выйти / закончить правку | **B** |
+| Изменить значение во время правки | **LEFT / RIGHT** |
+| Быстро изменить без входа в правку | удерживать **A**, нажать **LEFT/RIGHT**, отпустить **A** |
+| Переключить вкладки | **L1 / R1** |
+| Выйти из GrainBrick | **Select + Start** |
 
-USB-устройства звука (например, FM1 или Zoom H1n) определяются при подключении
-прямо во время работы. Списки прокручиваются по кругу. В редакторах **A**
-увеличивает значение, **B** уменьшает; на строках навигации **B** — назад.
+На ROCKNIX запускатель меняет местами A/B и X/Y для GrainBrick, чтобы подписи
+совпадали с корпусом.
 
-## iPhone / USB-звук
+## IPHONE / USB AUDIO
 
-**SETTINGS → AUDIO / ADVANCED** (страница *IPHONE / USB AUDIO*):
+**SETTINGS →** прокрутите до **IPHONE / USB AUDIO** → **A**.
 
-| Пункт | Что делает |
+| Строка | Значение |
 |---|---|
-| MODE | **OFF** · **USB INTERFACE** (внешняя USB-звуковая карта, например Zoom H1n) · **IPHONE** (консоль — звуковая карта для iPhone) |
+| MODE | **OFF** · **USB INTERFACE** (внешняя USB-карта) · **IPHONE** (консоль — звуковая карта для iPhone) |
 | SEND TO IPHONE | GrainBrick звучит в наушниках/динамике **и** в iPhone |
-| RECORD FROM IPHONE | запись звука iPhone в SAMPLE |
-| MONITOR WHILE RECORDING | слышать iPhone в наушниках во время записи |
-| STATUS | `CONNECT IPHONE (USB-C)` / `IPHONE CONNECTED` / `NOT STARTED - PRESS A` |
-| PLAYBACK OUTPUT | собственный выбор выхода GrainBrick |
+| RECORD FROM IPHONE | звук iPhone как USB-вход для записи и LIVE |
+| STATUS | `CONNECT IPHONE` / `IPHONE CONNECTED` / `PRESS A` (перезапуск гаджета) |
 
-При выборе **IPHONE** USB-звук включается сам, SSH не нужен; **OFF**
-возвращает обычный USB-режим ROCKNIX.
+1. Выберите **MODE → IPHONE** (режим USB-звука включается сам, SSH не нужен).
+2. Подключите iPhone к USB-C порту OTG консоли кабелем USB-C с передачей данных.
+   Статус станет **IPHONE CONNECTED**.
+3. **Консоль → iPhone:** в приложении на iPhone (Диктофон, GarageBand, камера)
+   выберите консоль как источник звука.
+4. **iPhone → консоль:** включите звук на iPhone; в GrainBrick в
+   **SAMPLE → запись** или **LIVE** выберите вход **USB**. Мониторинг — штатный
+   в BETA 2.0 (экран записи).
+5. **MODE → OFF** возвращает обычный USB-режим ROCKNIX.
 
-1. Подключите iPhone к разъёму USB-C (OTG) консоли кабелем USB-C ↔ USB-C.
-2. **Консоль → iPhone:** в приложении на iPhone (Диктофон, GarageBand…) входом
-   становится консоль; GrainBrick звучит в наушниках и в iPhone.
-3. **iPhone → консоль:** включите звук на iPhone, в GrainBrick откройте
-   **SAMPLE → Y RECORD → USB AUDIO** и нажмите **A**.
-4. **Мониторинг:** во время записи с iPhone его звук слышен в наушниках
-   консоли (обратно в iPhone не уходит). **SELECT во время записи**
-   включает/выключает мониторинг, выбор запоминается.
-5. При вставленных наушниках динамик выключается (на этой консоли ROCKNIX сам
-   этого не делает).
-6. После отключения iPhone выход INTERNAL всегда возвращается на консоль
-   (застрявшее на USB-карте системное «по умолчанию» исправляется).
-7. Запись, прерванная отключением кабеля, перед открытием редактора
-   исправляется (заголовок WAV), и её сохранение больше не исчерпывает память.
+*Внешние USB-устройства (FM1, Zoom H1n):* оставьте режим **OFF** или **USB
+INTERFACE** и подключите устройство — оно определяется как в штатном приложении.
 
-iOS пишет *«Аксессуар использует слишком много энергии»*: контроллер питания
-консоли берёт ток из iPhone (в этом режиме ограничен минимумом 100 мА). Звук
-работает, но iOS может разорвать соединение. **USB-C хаб с проходной зарядкой
-(PD)** между iPhone и консолью убирает предупреждение.
+iOS может показать *«Аксессуару требуется слишком много энергии»*: консоль питается
+по кабелю. Звук при этом работает; предупреждение убирает USB-C хаб со сквозной
+зарядкой PD. Технические подробности: [docs/USB_AUDIO.md](docs/USB_AUDIO.md).
 
-Технически: стерео, 16 бит, 48 кГц в обе стороны (Linux `f_uac2`). Маршруты
-строит PipeWire: общий выход `gb_both` (наушники + iPhone с подстройкой
-частот), запись со входа USB-карты, мониторинг через `pw-loopback`.
-Не останавливайте PipeWire — на ROCKNIX через него идёт и встроенный звук.
+## STICKS & BUTTONS
 
-### Почему ROCKNIX для iPhone
+**SETTINGS →** последняя строка **STICKS & BUTTONS** → **A**. В строке показан
+активный пресет (`NONE`, имя пресета или `USER`), а описание объясняет пункт под
+курсором. По умолчанию всё выключено (**OFF**).
 
-Ядро KNULLI (Allwinner BSP 4.9) не может привязать функцию UAC2
-(`afunc_bind`: нет изохронной конечной точки IN). В ROCKNIX — Linux 7.2 с
-драйвером MUSB, режим USB-устройства в нём работает. UAC2 в ядро не встроен,
-поэтому GrainBernik загружает два внешних модуля (`rocknix/uac2/`). История
-неудачной попытки с самосборным образом:
-[`tools/legacy-rocknix-test-image/`](tools/legacy-rocknix-test-image/).
+**Главная страница:** Left Stick · Right Stick · L2 Button · R2 Button ·
+L3 Click · R3 Click · Preset · Reset to Defaults · Back.
 
-## Удаление записей
+- **Стики:** *Enabled*, *X Effect*, *Y Effect* (61 параметр, см. ниже) и *Stick
+  Options*: мёртвая зона, чувствительность, инверсия X/Y, **Spring** (возврат к
+  начальному значению) или **Latch** (значение остаётся), сглаживание, физические
+  оси.
+- **L2 / R2 / L3 / R3:** *Enabled*, *Effect*, *Mode* — **Hold** (пока нажато) или
+  **Toggle** (нажали — включено, ещё раз — выключено). Для L3/R3 по умолчанию
+  Toggle; эффекты *Step* меняют значение один раз за нажатие и оставляют его.
+- **Preset:** выберите пресет → подтвердите **A**. *Save User* / *Load User* хранят
+  одну личную раскладку. Пресеты меняют только назначения, не звук.
+  **Если изменить любое назначение, активным пресетом станет `USER`.**
 
-В **SAMPLE** откройте папку **RECORDINGS** и выберите запись — внизу появится
-`SELECT: УДАЛИТЬ ЗАПИСЬ`. Нажмите **SELECT**, затем **ещё раз SELECT** в
-течение 4 секунд (`SELECT ЕЩЁ РАЗ: УДАЛИТЬ имя`). Удалять можно только WAV из
-`samples/recordings`; **загруженная** (играющая) запись защищена; демо-сэмплы и
-другие папки не трогаются — там SELECT, как и раньше, открывает справку.
+**Что можно назначить**
 
-## Стики и кнопки
+| Группа | Параметры стиков (примеры) |
+|---|---|
+| GRAIN, GRAIN 2/3 | position, size, density, pitch, spray, разброс высоты, случайность размера/тайминга, шанс реверса, envelope; roam speed/range/wander |
+| FX, TAPE | delay time/feedback/mix/lowpass, reverb mix/size/decay/damp, shimmer mix/pitch/feedback, tape saturation/wow/flutter/hiss |
+| ORBIX | gravity, rotation, bounce, volume, attack, release, reverb, balls, root, scale, instrument, octave, shape |
+| **ORBIX Rings** | structure, brightness, damping, position, mix, tune, detune, stereo, noise, excite mix |
+| **OSCILLATOR** | blend, dry/wet, drive, X-mod, баланс A/B, level |
+| **RHYTHM / LIVE** | темп BPM и offset, уровень входа, мастер-уровень |
 
-**SETTINGS → CONTROLS / ADVANCED** (бывшие Advanced Settings; пресеты — также через **CONTROLS**): шесть независимых
-органов, все по умолчанию **OFF** — **Left Stick**, **Right Stick** (параметры
-по X/Y), **L2**, **R2**, **L3 Click**, **R3 Click** (эффекты).
+| Эффект кнопки | Что делает |
+|---|---|
+| Freeze, Reverse, Stutter | штатные Motion hold / reverse / jump+chaos |
+| Delay Throw, Reverb Wash, Shimmer Burst | временное усиление задержки / реверба / шиммера |
+| Pitch Drop, Octave Up | ∓1 октава (относительно, суммируется) |
+| Octave +, Octave − | **шаг**: каждое нажатие сдвигает на октаву и оставляет |
+| Grain Burst, Scatter, Reverse Grains | плотное облако / разброс высоты-размера-тайминга / зёрна задом наперёд |
+| Lo-Fi, Bypass, ORBIX | tape + 8 бит / FX и EQ выключены / ORBIX включён |
+| **Rings Bloom, Rings Damp, Rings Detune** | открытый яркий звон / заглушить резонанс / расстройка и широкое стерео |
+| **Osc On, Osc Drive, Osc FM** | осциллятор вкл / сильный драйв / сильная кросс-модуляция |
+| **Slow Down, Speed Up** | темп ∓20 BPM пока держите; прежний темп возвращается |
+| **Tempo +5, Tempo −5** | **шаг**: темп ±5 BPM за нажатие |
+| **Input Cut, Input Boost, Mute Out** | вход LIVE на минимум / +6 dB / мьют мастера, пока держите |
 
-- **Стики:** любой из 31 параметра движка на каждую ось, мёртвая зона,
-  чувствительность, инверсия, Spring/Latch, сглаживание, номер оси.
-- **Эффекты кнопок:** Freeze, Reverse, Delay Throw, Reverb Wash, Pitch Drop,
-  Octave Up, Shimmer Burst, Grain Burst, Lo-Fi, Stutter, Bypass, ORBIX и шаговые
-  **Octave +** / **Octave −**.
-- **Режимы:** **Hold** (пока нажата), **Toggle** (нажал — включено, ещё раз —
-  выключено; по умолчанию для L3/R3), **Step** (Octave ±: каждое нажатие сдвигает
-  высоту зёрен на октаву и оставляет её, в пределах ±24).
-- Toggle-эффекты сохраняются при смене вкладок; выключаются повторным
-  нажатием, открытием этого меню или выходом. Hold и стики отпускаются вне
-  вкладок звука.
-- Если эффекты меняют один параметр, побеждает последний нажатый; Pitch
-  Drop/Octave Up — относительные и складываются.
-- Пока L3/R3 **ON**, нажатия на стики не листают вкладки (в оригинале это
-  TAB−/TAB+). Эффекты работают на GRAIN, FX, TAPE и VISUAL.
+**Пресеты** (левый стик X/Y · правый стик X/Y · L2 · R2 · L3 · R3):
 
-**Пресеты** (Presets → выбрать → подтвердить; один слот User через Save
-Current / Load User):
-
-| Пресет | Левый X / Y | Правый X / Y | L2 | R2 | L3 | R3 |
+| Пресет | Левый | Правый | L2 | R2 | L3 | R3 |
 |---|---|---|---|---|---|---|
 | Granular | Position / Size | Pitch / Density | Freeze | Reverse | Octave − | Octave + |
-| Ambient | Position / Spray | Reverb Mix / Shimmer | Freeze | Reverb Wash | Shimmer Burst | Bypass |
+| Ambient | Position / Spray | Reverb / Shimmer | Freeze | Reverb Wash | Shimmer Burst | Bypass |
 | Texture | Size / Spray | Density / Roam Speed | Grain Burst | Freeze | Reverse | Stutter |
 | Echo | Delay Time / Feedback | Delay Mix / Reverb Mix | Delay Throw | Reverb Wash | Freeze | Bypass |
 | Tape | Saturation / Wow | Pitch / Flutter | Pitch Drop | Lo-Fi | Reverse | Bypass |
 | ORBIX Play | Rotation / Gravity | Bounce / Reverb | ORBIX | Reverb Wash | Freeze | Shimmer Burst |
+| **Rhythm** | Position / Size | Density / Pitch | Slow Down | Speed Up | Tempo −5 | Tempo +5 |
+| **Rings** | Structure / Brightness | Damping / Position | Rings Bloom | Rings Damp | ORBIX | Rings Detune |
+| **Oscillator** | Blend / Drive | X-Mod / Dry-Wet | Osc FM | Osc Drive | Osc On | Bypass |
+| **Live** | Position / Input Level | Density / Spray | Input Cut | Mute Out | Freeze | Grain Burst |
+| **Grain 2/3** | Size Random / Timing Random | Pitch Spread / Reverse Chance | Scatter | Reverse Grains | Freeze | Octave + |
 
-Пресеты меняют только назначения, а не параметры звука. Настройки хранятся в
-`settings.json` (`grainbernik_advanced`); старый слот User без L3/R3
-сохраняется. Подсказки в меню следуют настройке INFO LANGUAGE (EN/RU).
-Подробнее: [docs/ADVANCED_SETTINGS.md](docs/ADVANCED_SETTINGS.md).
+**Полезно знать**
 
-## Кнопки
+- Органы работают на вкладках **GRAIN, FX, TAPE и VISUAL**; на других экранах
+  L2/R2 остаются приложению. Пока L3/R3 **включены**, нажатия на стики не
+  переключают вкладки. Toggle-эффекты остаются включёнными при смене вкладок и
+  снимаются повторным нажатием, при открытии страницы или выходе.
+- Если два эффекта меняют один параметр, побеждает нажатый последним;
+  относительные (Octave Up, Pitch Drop, Slow/Speed Up, Input Boost) складываются.
+- Параметры паттернов RHYTHM находятся внутри самого RHYTHM, а не в общем списке
+  параметров, поэтому назначается только общий **темп**. Hold на темпе борется с
+  LINK и tap-темпом, пока нажат.
+- Настройки хранятся в `settings.json` (`grainbernik_advanced`); назначения из
+  версии для 1.0.1 подхватываются (параметры, которых больше нет, становятся *None*).
+- Полное описание: [docs/STICKS_AND_BUTTONS.md](docs/STICKS_AND_BUTTONS.md).
 
-- **ROCKNIX:** GrainBrick 1.0.1 сам раскладывает кнопки по базе SDL
-  (`H700 Gamepad`). В ROCKNIX кнопки названы по надписям, а GrainBrick ждёт
-  названия по положению (как на KNULLI), поэтому запускалка меняет местами a/b
-  и x/y — только для GrainBrick. Старый адаптер калибровки `gb_buttons` на
-  ROCKNIX **выключен** (он переводил бы кнопки дважды). Отдельные кнопки можно
-  переназначить штатно: **SETTINGS → BUTTON MAPPING**.
-- **KNULLI:** `gb_buttons.py` запоминает раскладку при первом запуске
-  (`gb_buttons.json`); повторить — порт **GrainBernik Buttons Setup**.
+## Чего в 0.3 ещё нет
 
-## Установка на KNULLI
+- Сокращённого меню SETTINGS (AUDIO / CONTROLS) и **удаления записей прямо в
+  SAMPLE** из линии 1.0.1 — запланировано (шаг «2b» в
+  [docs/BETA2_PORT.md](docs/BETA2_PORT.md)).
+- Ещё не измерено на H700: нагрузка на CPU резонатора **Rings** и **LIVE** на
+  высоких настройках; **Bluetooth MIDI** на ROCKNIX; одновременная работа iPhone и
+  USB MIDI-хоста на единственном OTG-порту.
+- KNULLI запускатель BETA 2.0 не поддерживает (режим iPhone там всё равно
+  невозможен); используйте штатную инструкцию автора для KNULLI.
 
-1. Скопируйте `grainbrick beta 1.0.1/` и `GrainBrick beta 1.0.1.sh` из
-   официального ZIP в `/userdata/roms/ports/` (папка `roms/ports` на SHARE).
-2. Скопируйте все файлы из [`rg40xx-h-patch/grainbrick-beta/`](rg40xx-h-patch/grainbrick-beta/)
-   в `grainbrick beta 1.0.1/` (с заменой `gb_launch.py`), а
-   `GrainBernik Buttons Setup.sh` из [`rg40xx-h-patch/`](rg40xx-h-patch/) — в `roms/ports/`.
-3. Запустите из PORTS; при первом запуске пройдите настройку кнопок.
+## Если что-то не работает
 
-На KNULLI работают внешние USB-интерфейсы (например, Zoom H1n в режиме *Audio
-Interface*) для вывода и записи; режим iPhone — нет (ограничение ядра, см.
-выше). Встроенного микрофона у RG40XX H нет.
-
-## Сборка модулей USB-звука
-
-Готовые `u_audio.ko` и `usb_f_uac2.ko` для ROCKNIX 20261101 (ядро 7.2.0) лежат
-в [`rocknix/uac2/`](rocknix/uac2/). Пересборка (Linux/WSL с
-`gcc-aarch64-linux-gnu`, консоль доступна по SSH):
-
-```sh
-bash rocknix/build/build_uac2_modules.sh
-```
-
-Скрипт скачивает Linux 7.2, накладывает патчи ROCKNIX 20261101 для H700, берёт
-конфигурацию ядра с консоли, один раз собирает `vmlinux` (10–40 минут) и два
-модуля. CRC символов берутся из `rocknix/build/official.symvers`, извлечённого
-из официального ядра скриптом `rocknix/build/extract_kcrctab.py`: сборка GCC 13
-даёт другие CRC, чем GCC 16 у ROCKNIX. Для другой версии ROCKNIX скопируйте её
-`/flash/KERNEL` и создайте `official.symvers` заново.
-
-Вручную на консоли: `sh /storage/uac2/uac2-on.sh` / `sh /storage/uac2/uac2-off.sh`.
-Диагностика: `sh /storage/grainbernik-rocknix/gb-diag.sh`.
+| Проблема | Что делать |
+|---|---|
+| GrainBrick BETA 2.0 нет в PORTS | `systemctl restart essway`; проверьте `/storage/roms/ports/GrainBrick BETA 2.0.sh` |
+| Чёрный экран / возврат в меню | прочитайте `/storage/roms/ports/grainbrick-beta2/gb_launch.log` (строки `GRAINBERNIK ADAPTER FAILED` / `GB ADVANCED` / `GB USB AUDIO`) |
+| Нет строки STICKS & BUTTONS или IPHONE | адаптер не загрузился: смотрите журнал; `GRAINBERNIK_ADVANCED=0` / `GRAINBERNIK_USB_AUDIO=0` их отключают |
+| Статус остаётся `CONNECT IPHONE` | кабель USB-C с данными в порт OTG, нажмите **A** на строке STATUS, затем переподключите |
+| Нет звука | проверьте строки AUDIO OUTPUT и OUTPUT BOOST в SETTINGS и MODE на странице iPhone |
+| Диагностика | `sh /storage/grainbernik-rocknix/gb-diag.sh` |
 
 ## Параметры
 
-Переменные окружения (добавить в `GrainBrick beta 1.0.1.sh` перед строкой с Python):
+Добавьте строки `export ИМЯ=значение` в `GrainBrick BETA 2.0.sh` перед строкой с Python.
 
-| Переменная | Значения | Действие |
+| Переменная | Значения | Смысл |
 |---|---|---|
-| `GRAINBRICK_BUTTONS` | `0` / `1` | Адаптер калибровки кнопок (на KNULLI включён, на ROCKNIX выключен) |
-| `GRAINBERNIK_SWAP_ABXY` | `1` / `0` | ROCKNIX: менять a/b и x/y в раскладке SDL (по умолчанию 1) |
-| `GRAINBERNIK_ADVANCED` | `0` | Выключить «Стики и кнопки» |
-| `GRAINBERNIK_MASK_POLL` | `0` | Не скрывать занятые кнопки от прямого опроса |
-| `GRAINBERNIK_SAMPLE_DELETE` | `0` | Выключить удаление записей |
-| `GRAINBERNIK_USB_AUDIO` | `0` | Выключить адаптер iPhone / USB-звука |
-| `GRAINBERNIK_FIT`, `GRAINBERNIK_LEGACY_AUDIO` | `1` | Старые адаптеры экрана и USB-записи для beta 1.0 |
-| `GRAINBRICK_SCREEN`, `GRAINBRICK_SCALE` | например `640x480`, `smooth`/`fast` | Штатные параметры экрана |
+| `GRAINBERNIK_ADVANCED` | `0` | Отключить STICKS & BUTTONS |
+| `GRAINBERNIK_USB_AUDIO` | `0` | Отключить адаптер iPhone / USB-звука |
+| `GRAINBERNIK_SWAP_ABXY` | `1` / `0` | Поменять A/B и X/Y для GrainBrick (по умолчанию 1) |
+| `GRAINBRICK_DISPLAY_FILTER` | `smooth` / `fast` | Масштабирование экрана (по умолчанию `smooth`) |
 
-Журнал: `grainbrick beta 1.0.1/gb_launch.log`. Тесты:
-`python3 -m unittest discover -s tests` (тесты с ARM64-приложением вне консоли
-пропускаются).
+Тесты: `GRAINBRICK_BETA2_ZIP=/path/to/GrainBrick_BETA_2_0.zip python3 -m pytest tests`
+(нативные ARM64-тесты на других машинах пропускаются).
+
+## Сборка модулей USB-звука
+
+Готовые `u_audio.ko` и `usb_f_uac2.ko` для ROCKNIX 20261101 (ядро 7.2.0) лежат в
+[`rocknix/uac2/`](rocknix/uac2/); как они собраны и как пересобрать:
+[docs/LEGACY_1_0_1_RU.md](docs/LEGACY_1_0_1_RU.md#сборка-модулей-usb-звука).
 
 ## Лицензия
 
-GrainBrick распространяется автором бесплатно, исходный код приложения закрыт.
-Патч GrainBernik — открытые скрипты и адаптеры; модули ядра собраны из Linux
-(GPL-2.0) с патчами ROCKNIX.
+В репозитории только собственные файлы GrainBernik, кода GrainBrick здесь нет.
+GrainBrick бесплатен, но **не open source**; его уведомления и сторонние лицензии
+(SoundTouch, Mutable Instruments Rings, NumPy) — в официальном пакете. Файлы
+официального приложения не распространяйте.

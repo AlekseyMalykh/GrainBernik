@@ -1,3 +1,5 @@
+> Applies to the GrainBernik **v0.2.x** line (GrainBrick 1.0.1). For GrainBrick BETA 2.0 see [STICKS_AND_BUTTONS.md](STICKS_AND_BUTTONS.md).
+
 # Advanced Settings / Расширенные настройки
 
 This feature extends the official GrainBrick beta 1.0 **in process**, from the

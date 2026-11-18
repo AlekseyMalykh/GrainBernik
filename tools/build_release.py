@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Build GrainBernik release assets (no proprietary GrainBrick files).
 
-    python3 tools/build_release.py v0.2.0-beta.1 [output_dir]
+    python3 tools/build_release.py v0.3.0-beta.1 [output_dir]
+
+v0.3.x and later package the GrainBrick BETA 2.0 line, earlier versions the 1.0.1 line.
+Set GRAINBRICK_BETA2_ZIP to the official BETA 2.0 ZIP to run the full test suite.
 
 Creates <output_dir>/ (default: release/<version>/) with
   GrainBernik-<version>-RG40XXH-patch.zip   fresh installation (repo payload)
@@ -44,6 +47,33 @@ KNULLI: копируйте только `grainbrick-beta/*`, свой запус
 """
 
 
+UPDATE_MD_BETA2 = """# GrainBernik {v} — update / обновление (GrainBrick BETA 2.0)
+
+ROCKNIX:
+1. Copy `grainbrick-beta2/*` into `/storage/roms/ports/grainbrick-beta2/`
+   (replace files).
+2. Copy `rocknix/GrainBrick BETA 2.0.sh` into `/storage/roms/ports/`.
+Both steps are required. Settings, samples, projects and recordings are kept.
+Then restart the menu: `systemctl restart essway`.
+
+---
+
+ROCKNIX:
+1. Скопируйте `grainbrick-beta2/*` в `/storage/roms/ports/grainbrick-beta2/`
+   (с заменой).
+2. Скопируйте `rocknix/GrainBrick BETA 2.0.sh` в `/storage/roms/ports/`.
+Нужны оба шага. Настройки, сэмплы, проекты и записи сохраняются.
+Затем перезапустите меню: `systemctl restart essway`.
+"""
+# Files shared with the 1.0.1 line that BETA 2.0 also uses (see make_package.sh).
+BETA2_SHARED = ('gb_shutdown', 'gb_usb_audio', 'gb_usb_gadget', 'gb_pipewire')
+
+
+def is_beta2_line(version):
+    match = re.match(r'v(\d+)\.(\d+)', version)
+    return bool(match) and (int(match[1]), int(match[2])) >= (0, 3)
+
+
 def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
@@ -83,15 +113,29 @@ def main(version, out=None):
     notes = 'docs/releases/%s.md' % version
     if not (REPO / notes).is_file():
         raise SystemExit('missing release notes: ' + notes)
-    patch_files = list(files('README.md', 'README_RU.md', 'docs/ADVANCED_SETTINGS.md',
-                             'docs/SHUTDOWN_FIX.md', notes, 'rg40xx-h-patch', 'rocknix'))
+    beta2 = is_beta2_line(version)
+    docs = ['README.md', 'README_RU.md', 'docs/ADVANCED_SETTINGS.md', 'docs/SHUTDOWN_FIX.md',
+            'docs/USB_AUDIO.md', 'docs/LEGACY_1_0_1.md', 'docs/LEGACY_1_0_1_RU.md']
+    if beta2:
+        docs += ['docs/BETA2_PORT.md', 'docs/STICKS_AND_BUTTONS.md']
+    patch_files = list(files(*docs, notes, 'rg40xx-h-patch', 'rocknix'))
     patch = out / ('GrainBernik-%s-RG40XXH-patch.zip' % version)
     write_zip(patch, [(rel, p.read_bytes()) for p, rel in patch_files])
-    update_entries = [('UPDATE.md', UPDATE_MD.format(v=version).encode())]
-    update_entries += [(rel.replace('rg40xx-h-patch/', '', 1), p.read_bytes())
-                       for p, rel in files('rg40xx-h-patch/grainbrick-beta')]
-    update_entries += [('rocknix/GrainBrick beta 1.0.1.sh',
-                        (REPO / 'rocknix/GrainBrick beta 1.0.1.sh').read_bytes())]
+    if beta2:
+        update_entries = [('UPDATE.md', UPDATE_MD_BETA2.format(v=version).encode())]
+        update_entries += [('grainbrick-beta2/' + p.name, p.read_bytes())
+                           for p in sorted((REPO / 'rg40xx-h-patch/grainbrick-beta2').glob('*.py'))]
+        update_entries += [('grainbrick-beta2/%s.py' % name,
+                            (REPO / 'rg40xx-h-patch/grainbrick-beta' / (name + '.py')).read_bytes())
+                           for name in BETA2_SHARED]
+        update_entries += [('rocknix/GrainBrick BETA 2.0.sh',
+                            (REPO / 'rocknix/GrainBrick BETA 2.0.sh').read_bytes())]
+    else:
+        update_entries = [('UPDATE.md', UPDATE_MD.format(v=version).encode())]
+        update_entries += [(rel.replace('rg40xx-h-patch/', '', 1), p.read_bytes())
+                           for p, rel in files('rg40xx-h-patch/grainbrick-beta')]
+        update_entries += [('rocknix/GrainBrick beta 1.0.1.sh',
+                            (REPO / 'rocknix/GrainBrick beta 1.0.1.sh').read_bytes())]
     update = out / ('GrainBernik-%s-RG40XXH-update.zip' % version)
     write_zip(update, update_entries)
     (out / 'SHA256SUMS.txt').write_text(''.join('%s  %s\n' % (sha256(z), z.name)
@@ -107,7 +151,8 @@ def main(version, out=None):
         'source_commit': commit,
         'working_tree_clean': not dirty,
         'proprietary_application_included': False,
-        'device': 'Anbernik RG40XX H',
+        'device': 'Anbernic RG40XX H',
+        'grainbrick': 'BETA 2.0 (v2.0.0-beta.2)' if beta2 else 'beta 1.0.1',
         'os': 'official ROCKNIX 20261101 (DDR4 image); KNULLI supported without iPhone mode',
         'unit_tests': test_result,
         'assets_sha256': {z.name: sha256(z) for z in (patch, update)},
