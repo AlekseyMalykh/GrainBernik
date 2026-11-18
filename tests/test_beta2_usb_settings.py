@@ -72,6 +72,8 @@ class FakeUI:
 
     def draw_info_window(self, param, **kw):
         self.calls.append('info:' + param)
+        # like the native renderer: looks the text up through the module global
+        self.last_info = sys.modules['ui.renderer'].get_context_info(param, self.info_language)
 
     def text(self, *a, **k):
         self.calls.append('text:' + str(a[0]))
@@ -286,10 +288,16 @@ class Beta2USBSettings(unittest.TestCase):
         ui.draw_settings_page(controls)
         self.assertFalse(page._runtime.open)
         self.assertFalse(page._runtime.edit)
-        title, text = self.renderer.get_context_info(page.PARAM, 'RU')
+        native = self.renderer.get_context_info
+        # ORBIX Rings / OSCILLATOR info layers replace the global after our attach.
+        self.renderer.get_context_info = lambda p, language='EN', *a: native(p, language, *a)
+        ui.info_language = 'RU'
+        ui.draw_info_window(page.PARAM)
+        title, text = ui.last_info
         self.assertEqual(title, page.LABEL)
         self.assertIn('IPHONE', text.upper())
-        self.assertEqual(self.renderer.get_context_info('settings.audio_output'), ('NATIVE', 'settings.audio_output'))
+        ui.draw_info_window('settings.audio_output')
+        self.assertEqual(ui.last_info, ('NATIVE', 'settings.audio_output'))
 
     def test_transient_gadget_output_is_not_saved_to_native_settings(self):
         page, controls, ui = self.attach()

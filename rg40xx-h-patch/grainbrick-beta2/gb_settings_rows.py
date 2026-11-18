@@ -34,6 +34,46 @@ def register(control_cls, ui, key, label, value_fn):
         ui._gb_rows_registry = True
 
 
+_info = {}
+
+
+def register_info(ui_cls, renderer, key, provider):
+    """Own INFO text for a SETTINGS row: provider(language) -> (title, text).
+
+    BETA 2.0 layers (ORBIX Rings / OSCILLATOR info) replace
+    ui.renderer.get_context_info AFTER our adapters attached, so patching that
+    name is not enough. UIEngine.draw_info_window is wrapped instead and swaps
+    the lookup for the duration of the call.
+    """
+    _info[key] = provider
+    if getattr(ui_cls, '_gb_info_registry', False):
+        return
+    previous = ui_cls.draw_info_window
+
+    def draw_info_window(self, param, *args, **kwargs):
+        provider = _info.get(param)
+        if provider is None:
+            return previous(self, param, *args, **kwargs)
+        native = renderer.get_context_info
+
+        def lookup(name, language='EN', *rest, **more):
+            if name == param:
+                try:
+                    return provider(language)
+                except Exception:
+                    pass
+            return native(name, language, *rest, **more)
+        renderer.get_context_info = lookup
+        try:
+            return previous(self, param, *args, **kwargs)
+        finally:
+            renderer.get_context_info = native
+
+    ui_cls.draw_info_window = draw_info_window
+    ui_cls._gb_info_registry = True
+
+
 def reset():
     """Tests only."""
     _entries.clear()
+    _info.clear()

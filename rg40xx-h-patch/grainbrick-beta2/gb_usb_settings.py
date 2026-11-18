@@ -320,7 +320,7 @@ def _attach():
         return False
     old_init, old_handle, old_ui = C.__init__, C.handle, U.__init__
     old_draw, old_poll, old_close, old_save = U.draw_settings_page, I.poll, I.close, U._save_settings
-    old_footer, old_context = U._gb_draw_footer, renderer.get_context_info
+    old_footer = U._gb_draw_footer
     def ensure(ui=None):
         """Register the key and row once the RHYTHM/BLE integration has installed its own."""
         gb_settings_rows.register(
@@ -364,12 +364,6 @@ def _attach():
             return
         return old_footer(self, controls, audio_worker)
 
-    def context(param, *args, **kw):
-        if param == PARAM and _runtime:
-            language = args[0] if args else kw.get('language', 'EN')
-            return _runtime.info(language)
-        return old_context(param, *args, **kw)
-
     def poll(self, *args, **kw):
         result = old_poll(self, *args, **kw)
         if _runtime:
@@ -395,7 +389,7 @@ def _attach():
 
     C.__init__, C.handle = init, handle
     U.__init__, U.draw_settings_page, U._save_settings, U._gb_draw_footer = ui_init, draw, save, footer
-    renderer.get_context_info = context
+    gb_settings_rows.register_info(U, renderer, PARAM, lambda language: _runtime.info(language))
     I.poll, I.close = poll, close
     _attached = True
     return True

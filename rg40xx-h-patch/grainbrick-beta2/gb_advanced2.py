@@ -468,7 +468,7 @@ def _attach():
         return False
     old_init, old_handle, old_ui = C.__init__, C.handle, U.__init__
     old_draw, old_save, old_footer = U.draw_settings_page, U._save_settings, U._gb_draw_footer
-    old_context, old_poll, old_close, old_events = renderer.get_context_info, I.poll, I.close, A.events
+    old_poll, old_close, old_events = I.poll, I.close, A.events
 
     def ensure(ui=None):
         gb_settings_rows.register(
@@ -514,11 +514,6 @@ def _attach():
             return
         return old_footer(self, controls, audio_worker)
 
-    def context(param, *args, **kw):
-        if param == PARAM and _runtime:
-            return _runtime.info(args[0] if args else kw.get('language', 'EN'))
-        return old_context(param, *args, **kw)
-
     def save(self):
         # Native settings changes must not erase our nested configuration.
         preserved = None
@@ -552,7 +547,7 @@ def _attach():
 
     C.__init__, C.handle = init, handle
     U.__init__, U.draw_settings_page, U._save_settings, U._gb_draw_footer = ui_init, draw, save, footer
-    renderer.get_context_info = context
+    gb_settings_rows.register_info(U, renderer, PARAM, lambda language: _runtime.info(language))
     I.poll, I.close, A.events = poll, close, events
     _attached = True
     _log('attached to native Settings / ParameterBus')

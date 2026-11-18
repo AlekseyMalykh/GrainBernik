@@ -301,6 +301,8 @@ class FakeUI:
 
     def draw_info_window(self, param, **kw):
         self.calls.append('info:' + param)
+        # like the native renderer: looks the text up through the module global
+        self.last_info = sys.modules['ui.renderer'].get_context_info(param, self.info_language)
 
     def text(self, *a, **k):
         self.calls.append('text:' + str(a[0]))
@@ -432,8 +434,14 @@ class Beta2AdvancedAdapter(unittest.TestCase):
         self.ui._gb_draw_footer(self.controls, None)
         bar = [c for c in self.ui.calls if isinstance(c, tuple)][-1][1]
         self.assertEqual(bar, ['D-PAD NAV', 'A OPEN', 'B BACK'])
-        info = self.m['renderer'].get_context_info(self.adv.PARAM, 'RU')
-        self.assertEqual(info[0], 'STICKS & BUTTONS')
+        native = self.m['renderer'].get_context_info
+        self.m['renderer'].get_context_info = lambda p, language='EN', *a: native(p, language, *a)
+        self.ui.info_language = 'RU'
+        self.ui.draw_info_window(self.adv.PARAM)          # replaced global must not hide our text
+        self.assertEqual(self.ui.last_info[0], 'STICKS & BUTTONS')
+        self.assertTrue(self.ui.last_info[1].startswith('ПРЕСЕТ: '))
+        self.ui.draw_info_window('settings.ble_midi')
+        self.assertEqual(self.ui.last_info, ('NATIVE', 'settings.ble_midi'))
 
     def test_info_panel_has_english_and_russian_help_for_every_effect_and_preset(self):
         core = self.adv._core
