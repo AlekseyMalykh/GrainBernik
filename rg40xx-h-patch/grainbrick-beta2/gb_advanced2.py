@@ -178,6 +178,55 @@ HELP.update({
               'Стики, L2/R2 и нажатия L3/R3 для звука. A открывает, B возвращает.'),
 })
 
+HELP.update({
+    'Granular': ('L Position/Size, R Pitch/Density. L2 Freeze, R2 Reverse, L3 Octave -, R3 Octave + (steps).',
+                 'L: позиция и размер, R: высота и плотность. L2 заморозка, R2 реверс, L3 октава вниз, R3 октава вверх.'),
+    'Ambient': ('L Position/Spray, R Reverb/Shimmer. L2 Freeze, R2 Reverb Wash, L3 Shimmer Burst, R3 Bypass.',
+                'L: позиция и разброс, R: реверб и шиммер. L2 заморозка, R2 Reverb Wash, L3 Shimmer Burst, R3 Bypass.'),
+    'Texture': ('L Size/Spray, R Density/Roam speed. L2 Grain Burst, R2 Freeze, L3 Reverse, R3 Stutter.',
+                'L: размер и разброс, R: плотность и скорость Roam. L2 Grain Burst, R2 заморозка, L3 реверс, R3 Stutter.'),
+    'Echo': ('L Delay time/Feedback, R Delay/Reverb mix. L2 Delay Throw, R2 Reverb Wash, L3 Freeze, R3 Bypass.',
+             'L: время и обратная связь задержки, R: микс задержки и ревербa. L2 Delay Throw, R2 Reverb Wash, L3 заморозка, R3 Bypass.'),
+    'Tape': ('L Saturation/Wow, R Pitch/Flutter. L2 Pitch Drop, R2 Lo-Fi, L3 Reverse, R3 Bypass.',
+             'L: насыщение и wow, R: высота и flutter. L2 Pitch Drop, R2 Lo-Fi, L3 реверс, R3 Bypass.'),
+    'ORBIX Play': ('L Rotation/Gravity, R Bounce/Reverb. L2 ORBIX, R2 Reverb Wash, L3 Freeze, R3 Shimmer Burst.',
+                   'L: вращение и гравитация, R: отскок и реверб ORBIX. L2 ORBIX, R2 Reverb Wash, L3 заморозка, R3 Shimmer Burst.'),
+    'Rhythm': ('RHYTHM: L Position/Size, R Density/Pitch. L2 Slow Down, R2 Speed Up (held), L3 Tempo -5, R3 Tempo +5 (steps).',
+               'RHYTHM: L позиция и размер, R плотность и высота. L2 темп медленнее, R2 быстрее (пока держишь), L3 темп -5, R3 темп +5 (шаг).'),
+    'Rings': ('ORBIX Rings: L Structure/Brightness, R Damping/Position. L2 Rings Bloom, R2 Rings Damp, L3 ORBIX on/off, R3 Rings Detune.',
+              'ORBIX Rings: L структура и яркость, R затухание и позиция. L2 Rings Bloom, R2 Rings Damp, L3 вкл/выкл ORBIX, R3 Rings Detune.'),
+    'Oscillator': ('OSCILLATOR: L Blend/Drive, R X-Mod/Dry-Wet. L2 Osc FM, R2 Osc Drive, L3 Osc On, R3 Bypass.',
+                   'OSCILLATOR: L смесь и драйв, R кросс-модуляция и dry/wet. L2 Osc FM, R2 Osc Drive, L3 Osc On, R3 Bypass.'),
+    'Live': ('LIVE: L Position/Input level, R Density/Spray. L2 Input Cut, R2 Mute Out, L3 Freeze, R3 Grain Burst.',
+             'LIVE: L позиция и уровень входа, R плотность и разброс. L2 Input Cut, R2 Mute Out, L3 заморозка, R3 Grain Burst.'),
+    'Grain 2/3': ('GRAIN 2/3: L Size random/Timing random, R Pitch spread/Reverse chance. L2 Scatter, R2 Reverse Grains, L3 Freeze, R3 Octave +.',
+                  'GRAIN 2/3: L случайность размера и тайминга, R разброс высоты и шанс реверса. L2 Scatter, R2 Reverse Grains, L3 заморозка, R3 Octave +.'),
+    'presets': ('Eleven factory layouts and a User slot. The active preset is shown; changing any assignment makes it User.',
+                'Одиннадцать готовых раскладок и слот User. Активный пресет показан; любое изменение назначений делает его User.'),
+    'entry': ('Assign the sticks, L2/R2 and L3/R3 clicks to sound. A opens, B goes back.',
+              'Стики, L2/R2 и клики L3/R3 для управления звуком. A открывает, B возвращает.'),
+    'None': ('No extra effect or input capture. Enable the control and select an assignment to use it.',
+             'Без дополнительного эффекта и перехвата ввода. Для работы включите орган и выберите назначение.'),
+})
+
+# Row labels / values in Russian (parameter and effect names stay as in the app).
+LABELS_RU = {
+    'Left Stick': 'Левый стик', 'Right Stick': 'Правый стик', 'L2 Button': 'Кнопка L2',
+    'R2 Button': 'Кнопка R2', 'L3 Click': 'Клик L3', 'R3 Click': 'Клик R3',
+    'Preset': 'Пресет', 'Reset to Defaults': 'Сброс', 'Back': 'Назад', 'Enabled': 'Включено',
+    'X Effect': 'Эффект X', 'Y Effect': 'Эффект Y', 'Stick Options': 'Настройки стика',
+    'Effect': 'Эффект', 'Mode': 'Режим', 'Deadzone': 'Мёртвая зона', 'Sensitivity': 'Чувствит.',
+    'Invert X': 'Инверсия X', 'Invert Y': 'Инверсия Y', 'Return Mode': 'Возврат',
+    'Smoothing': 'Сглаживание', 'Physical X Axis': 'Ось X (физ.)', 'Physical Y Axis': 'Ось Y (физ.)',
+    'Cancel': 'Отмена', 'Restore Defaults': 'Вернуть по умолч.', 'Apply Preset': 'Применить',
+    'Save User': 'Сохранить свой', 'Load User': 'Загрузить свой',
+}
+VALUES_RU = {'ON': 'ВКЛ', 'OFF': 'ВЫКЛ', 'ACTIVE': 'АКТИВЕН', 'Empty': 'Пусто', 'Saved': 'Сохранён',
+             'Unavailable': 'Недоступно', 'None': 'Нет', 'User': 'Свой'}
+FOOTER_RU = {'D-PAD NAV': 'КРЕСТ: ВЫБОР', 'A EDIT': 'A ПРАВКА', 'A TOGGLE': 'A ВКЛ/ВЫКЛ', 'A OPEN': 'A ОТКРЫТЬ',
+             'A+L/R QUICK': 'A+L/R БЫСТРО', 'B BACK': 'B НАЗАД', 'LEFT/RIGHT CHANGE': 'ВЛЕВО/ВПРАВО: ИЗМЕНИТЬ',
+             'A/B DONE': 'A/B ГОТОВО', 'A CONFIRM': 'A ПОДТВЕРДИТЬ', 'B CANCEL': 'B ОТМЕНА'}
+
 # Localized strings for the confirmation pages.
 MESSAGES = {
     'reset_title': ('RESTORE DEFAULTS?', 'ВЕРНУТЬ НАСТРОЙКИ ПО УМОЛЧАНИЮ?'),
@@ -185,6 +234,8 @@ MESSAGES = {
     'save_user_title': ('SAVE CURRENT TO USER?', 'СОХРАНИТЬ ТЕКУЩУЮ В USER?'),
     'load_user_title': ('LOAD USER PRESET?', 'ЗАГРУЗИТЬ ПРЕСЕТ USER?'),
     'not_saved': ('NOT SAVED: CHECK SETTINGS FILE', 'НЕ СОХРАНЕНО: ПРОВЕРЬТЕ ФАЙЛ НАСТРОЕК'),
+    'preset': ('PRESET', 'ПРЕСЕТ'),
+    'presets_title': ('PRESETS', 'ПРЕСЕТЫ'),
 }
 
 
@@ -296,9 +347,11 @@ class Runtime:
     # --- native INFO panel text -------------------------------------------
     def info(self, language):
         i = 1 if str(language).upper() == 'RU' else 0
-        if not self.open:
-            return LABEL, HELP['entry'][i]
-        return LABEL, HELP.get(self._help_key(), HELP['None'])[i]
+        preset = _core.active_preset(self.settings.data)
+        shown = VALUES_RU.get(preset, preset) if i else preset
+        prefix = '%s: %s. ' % (MESSAGES['preset'][i], shown.upper())  # visible without scrolling
+        text = HELP['entry'][i] if not self.open else HELP.get(self._help_key(), HELP['None'])[i]
+        return LABEL, prefix + text
 
     def _help_key(self):
         menu = self.menu
@@ -331,12 +384,17 @@ class Runtime:
         elif page == 'root':
             title = LABEL
         elif page == 'presets':
-            title = 'PRESETS' if not lang else 'ПРЕСЕТЫ'
+            title = MESSAGES['presets_title'][lang]
         else:
-            title = menu.LABELS[page.split('.')[0]].upper()
+            base = menu.LABELS[page.split('.')[0]]
+            title = (LABELS_RU.get(base, base) if lang else base).upper()
             if page.endswith('.options'):
-                title += ' / OPTIONS'
+                title += ' / НАСТРОЙКИ' if lang else ' / OPTIONS'
         ui.text(title[:38], 55, 325, 4, ui.ACCENT)
+        preset = _core.active_preset(self.settings.data)
+        if page in ('root', 'presets') and not menu.confirm:
+            shown = VALUES_RU.get(preset, preset) if lang else preset
+            ui.text(('%s: %s' % (MESSAGES['preset'][lang], shown)).upper()[:26], 560, 335, 2, ui.DIM)
         pygame.draw.line(ui.screen, ui.VERY_DIM, (55, 381), (969, 381), 1)
         rows = menu.rows()
         visible = 7
@@ -356,6 +414,9 @@ class Runtime:
                                 and key not in ('back', 'enabled'))
             color = ui.ACCENT if focused else ui.DIM if disabled else ui.WHITE
             ui.text('>' if focused else ' ', 35, y, 3, ui.ACCENT)
+            if lang:
+                label = LABELS_RU.get(label, label)
+                value = VALUES_RU.get(value, value)
             ui.text(str(label).upper()[:24], 65, y, 3, color)
             shown = str(value).upper()[:20]
             if focused and menu.edit:
@@ -367,6 +428,12 @@ class Runtime:
             ui.text(MESSAGES['not_saved'][lang], 65, 676, 2, ui.ACCENT)
 
     def footer_items(self, ui):
+        items = self._footer_items(ui)
+        if _lang(ui):
+            items = [(FOOTER_RU.get(text, text), color) for text, color in items]
+        return items
+
+    def _footer_items(self, ui):
         menu = self.menu
         if menu.edit:
             return [('LEFT/RIGHT CHANGE', ui.ACCENT), ('A/B DONE', ui.DIM)]

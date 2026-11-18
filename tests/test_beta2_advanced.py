@@ -441,6 +441,27 @@ class Beta2AdvancedAdapter(unittest.TestCase):
             self.assertIn(key, self.adv.HELP, key)
             self.assertTrue(all(self.adv.HELP[key]), key)
 
+    def test_russian_help_is_translated_and_info_shows_active_preset(self):
+        adv = self.adv
+        for key in adv._core.FACTORY_PRESETS:
+            en, ru = adv.HELP[key]
+            self.assertNotEqual(en, ru, key)
+            self.assertRegex(ru, '[А-Яа-я]', key)
+        rt = adv._runtime
+        title, text = rt.info('EN')
+        self.assertTrue(text.startswith('PRESET: NONE. '), text)
+        rt.settings.apply_factory('Rings')
+        self.assertTrue(rt.info('EN')[1].startswith('PRESET: RINGS. '))
+        self.assertTrue(rt.info('RU')[1].startswith('ПРЕСЕТ: RINGS. '))
+        rt.settings.data['l2']['effect'] = 'Input Cut'
+        self.assertTrue(rt.info('RU')[1].startswith('ПРЕСЕТ: СВОЙ. '))
+        self.ui.info_language = 'RU'
+        rt.menu.open()
+        self.ui.calls.clear()
+        rt.draw(self.ui)
+        self.assertIn('text:ЛЕВЫЙ СТИК'.lower(), [c.lower() for c in self.ui.calls if isinstance(c, str)])
+        self.assertEqual(rt.footer_items(self.ui)[1][0], 'A ОТКРЫТЬ')
+
     def test_native_save_does_not_drop_our_block(self):
         rt = self.adv._runtime
         rt.settings.data['l2'].update(enabled=True, effect='Scatter')
